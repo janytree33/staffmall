@@ -504,8 +504,9 @@ function Home() {
               <h1 className="header-title">
                 제니트리 임직원 전용 화장품 복지몰
               </h1>
-              <p className="header-subtitle">
-                🌿 특별한 혜택으로 화장품을 만나보세요. (본인 / 가족 / 지인 할인 적용)
+              <p className="header-subtitle" style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                <span className="material-symbols-rounded" style={{ fontSize: '1.2rem', color: 'var(--jt-color-success)' }}>spa</span>
+                특별한 혜택으로 화장품을 만나보세요. (본인 / 가족 / 지인 할인 적용)
               </p>
             </div>
           </div>
