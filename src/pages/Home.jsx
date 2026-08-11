@@ -587,7 +587,7 @@ function Home() {
           onClick={() => { setShowPwdModal(false); setPwdInput(''); }}
           style={{
             position: 'fixed', top: 0, left: 0, width: '100%', height: '100%',
-            backgroundColor: 'rgba(0,0,0,0.55)',
+            backgroundColor: 'var(--jt-dim-50)',
             backdropFilter: 'blur(4px)',
             display: 'flex', justifyContent: 'center', alignItems: 'center',
             zIndex: 9998
@@ -596,20 +596,21 @@ function Home() {
           <div
             onClick={e => e.stopPropagation()}
             style={{
-              background: '#ffffff',
-              borderRadius: '1.5rem',
-              padding: '2rem',
+              background: 'var(--jt-neutral-0)',
+              borderRadius: 'var(--jt-r-xl)',
+              padding: 'var(--jt-space-6) var(--jt-space-7)',
               width: '90%', maxWidth: '400px',
-              boxShadow: '0 20px 60px rgba(6,182,212,0.25)',
-              border: '2px solid #6ee7b7',
+              boxShadow: 'var(--jt-shadow-2xl)',
               animation: 'modalFadeIn 0.25s ease-out'
             }}
           >
             {/* 모달 제목 */}
             <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
-              <div style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>🔒</div>
-              <h2 style={{ fontSize: '1.2rem', fontWeight: '800', color: '#0a2e1f', margin: 0 }}>{pwdModalTitle || '관리자 확인'}</h2>
-              <p style={{ fontSize: '0.85rem', color: '#2d7a5a', marginTop: '0.3rem' }}>비밀번호를 입력해 주세요</p>
+              <span className="material-symbols-rounded" style={{ fontSize: '2.5rem', marginBottom: '0.5rem', color: 'var(--jt-neutral-600)' }}>lock</span>
+              <h2 style={{ fontSize: '1.2rem', fontWeight: '800', color: 'var(--jt-color-text)', margin: 0 }}>
+                {pwdModalTitle ? pwdModalTitle.replace(/[⚙️🔒]\s*/g, '') : '관리자 확인'}
+              </h2>
+              <p style={{ fontSize: '0.85rem', color: 'var(--jt-color-text-secondary)', marginTop: '0.3rem' }}>비밀번호를 입력해 주세요</p>
             </div>
 
             {/* 비밀번호 입력 (첫 글자 표시 + 나머지 ● 마스킹) */}
@@ -626,27 +627,29 @@ function Home() {
                 padding: '0.85rem 1rem',
                 fontSize: '1.3rem',
                 letterSpacing: '0.25rem',
-                border: pwdError ? '2px solid #ef4444' : '2px solid #6ee7b7',
-                borderRadius: '0.75rem',
+                border: pwdError ? '1px solid var(--jt-color-danger)' : '1px solid var(--jt-color-border)',
+                borderRadius: 'var(--jt-r-md)',
                 outline: 'none',
                 textAlign: 'center',
-                fontFamily: 'monospace',
-                background: pwdError ? '#fef2f2' : '#f0fdf4',
-                color: '#0a2e1f',
+                fontFamily: 'var(--jt-font-num)',
+                background: pwdError ? 'var(--jt-danger-50)' : 'var(--jt-neutral-50)',
+                color: 'var(--jt-color-text)',
                 transition: 'border 0.2s'
               }}
             />
 
             {/* 오류 메시지 */}
             {pwdError && (
-              <p style={{ color: '#ef4444', fontSize: '0.85rem', textAlign: 'center', marginTop: '0.5rem', fontWeight: '600' }}>
-                ❌ 비밀번호가 일치하지 않습니다. 다시 입력해 주세요.
+              <p style={{ color: 'var(--jt-color-danger)', fontSize: '0.85rem', textAlign: 'center', marginTop: '0.5rem', fontWeight: '600', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.25rem' }}>
+                <span className="material-symbols-rounded" style={{ fontSize: '1rem' }}>error</span>
+                비밀번호가 일치하지 않습니다. 다시 입력해 주세요.
               </p>
             )}
 
             {/* 입력 힌트 */}
-            <p style={{ fontSize: '0.75rem', color: '#6b7280', textAlign: 'center', marginTop: '0.5rem' }}>
-              💡 첫 글자는 표시되고 나머지는 ● 로 가려집니다
+            <p style={{ fontSize: '0.75rem', color: 'var(--jt-color-text-secondary)', textAlign: 'center', marginTop: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.25rem' }}>
+              <span className="material-symbols-rounded" style={{ fontSize: '1rem' }}>lightbulb</span>
+              첫 글자는 표시되고 나머지는 ● 로 가려집니다
             </p>
 
             {/* 버튼 영역 */}
@@ -654,9 +657,9 @@ function Home() {
               <button
                 onClick={() => { setShowPwdModal(false); setPwdInput(''); }}
                 style={{
-                  flex: 1, padding: '0.75rem', borderRadius: '9999px',
-                  border: '1.5px solid #d1d5db', background: '#f9fafb',
-                  color: '#374151', fontWeight: '700', cursor: 'pointer', fontSize: '0.9rem'
+                  flex: 1, padding: 'var(--jt-space-4)', borderRadius: 'var(--jt-r-md)',
+                  border: '1px solid var(--jt-color-border)', background: 'var(--jt-neutral-0)',
+                  color: 'var(--jt-neutral-700)', fontWeight: '700', cursor: 'pointer', fontSize: '0.9rem'
                 }}
               >
                 취소
@@ -664,11 +667,10 @@ function Home() {
               <button
                 onClick={handlePwdSubmit}
                 style={{
-                  flex: 1, padding: '0.75rem', borderRadius: '9999px',
+                  flex: 1, padding: 'var(--jt-space-4)', borderRadius: 'var(--jt-r-md)',
                   border: 'none',
-                  background: 'linear-gradient(135deg, #06b6d4, #059669)',
-                  color: '#ffffff', fontWeight: '700', cursor: 'pointer', fontSize: '0.9rem',
-                  boxShadow: '0 4px 14px rgba(6,182,212,0.4)'
+                  background: 'var(--jt-color-primary)',
+                  color: 'var(--jt-neutral-0)', fontWeight: '700', cursor: 'pointer', fontSize: '0.9rem'
                 }}
               >
                 확인
