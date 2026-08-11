@@ -231,18 +231,15 @@ body {
   font-size: 1.8rem;
   font-weight: 800;
   margin: 0;
-  color: #ffffff;
-  text-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  color: var(--jt-color-text);
   line-height: 1.2;
 }
 
 .header-subtitle {
-  color: #ffffff;
+  color: var(--jt-color-text-secondary);
   margin-top: 0.3rem;
   font-size: 0.9rem;
   font-weight: 600;
-  opacity: 0.9;
-  text-shadow: 0 1px 4px rgba(0,0,0,0.1);
 }
 
 .header-buttons {

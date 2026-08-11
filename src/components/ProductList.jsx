@@ -52,8 +52,8 @@ export default function ProductList({ products = [], onAddToCart, onBatchAddToCa
 
   return (
     <div className="product-list-container animate-fade-in">
-      <h2 style={{ color: '#ffffff', fontWeight: '800', fontSize: '1.8rem', marginBottom: '0.5rem', textShadow: '0 2px 8px rgba(0,0,0,0.15)' }}>상품 목록</h2>
-      <p style={{ color: 'rgba(255,255,255,0.85)', marginBottom: '1.5rem', fontWeight: '500' }}>
+      <h2 style={{ color: 'var(--jt-color-text)', fontWeight: '800', fontSize: '1.8rem', marginBottom: '0.5rem' }}>상품 목록</h2>
+      <p style={{ color: 'var(--jt-color-text-secondary)', marginBottom: '1.5rem', fontWeight: '600' }}>
         원하시는 상품의 구매 대상과 수량을 선택한 후 장바구니에 담아주세요.
       </p>
 
