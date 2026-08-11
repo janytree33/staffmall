@@ -492,7 +492,7 @@ function Home() {
     <div className="container" style={{ paddingBottom: '140px' }}>
       <header style={{ marginBottom: '2.5rem', textAlign: 'center', width: '100%' }}>
         {/* 참고 사이트처럼 헤더 전체를 밝고 반투명한 카드형 배너로 */}
-        <div className="header-card">
+        <div className="header-card premium-card" style={{ padding: 'var(--jt-space-6) var(--jt-space-7)' }}>
           {/* 로고 & 타이틀 */}
           <div className="header-title-container">
             <img 
@@ -500,7 +500,7 @@ function Home() {
               alt="제니트리 로고" 
               className="header-logo"
             />
-            <div className="header-text-container">
+            <div className="header-text-container" style={{ textAlign: 'left' }}>
               <h1 className="header-title">
                 제니트리 임직원 전용 화장품 복지몰
               </h1>
@@ -514,23 +514,24 @@ function Home() {
           <div className="header-buttons">
             {user ? (
               <button 
-                className="header-btn"
-                style={{ backgroundColor: 'var(--jt-bg-container)', color: 'var(--jt-color-text)', fontWeight: 'bold', border: '1px solid var(--jt-color-border)' }}
+                className="premium-btn"
+                style={{ backgroundColor: 'var(--jt-neutral-100)', color: 'var(--jt-neutral-800)', border: '1px solid var(--jt-color-border)', height: 'var(--jt-control-height)' }}
                 onClick={() => navigate('/mypage')}
               >
                 👤 마이페이지
               </button>
             ) : (
               <button 
-                className="header-btn"
-                style={{ backgroundColor: 'var(--jt-color-primary)', color: 'white', fontWeight: 'bold' }}
+                className="premium-btn"
+                style={{ backgroundColor: 'var(--jt-color-primary)', color: 'var(--jt-neutral-0)', height: 'var(--jt-control-height)' }}
                 onClick={() => navigate('/login')}
               >
                 🔐 직원 로그인
               </button>
             )}
             <button 
-              className="header-btn header-btn-admin"
+              className="premium-btn"
+              style={{ backgroundColor: 'transparent', color: 'var(--jt-neutral-600)', border: '1px solid var(--jt-color-border)', height: 'var(--jt-control-height)' }}
               onClick={() => {
                 if (showAdminSettings) {
                   setShowAdminSettings(false);
@@ -549,12 +550,12 @@ function Home() {
             </button>
             
             <button 
-              className="header-btn header-btn-order"
+              className="premium-btn"
+              style={{ backgroundColor: 'var(--jt-color-accent)', color: 'var(--jt-neutral-0)', height: 'var(--jt-control-height)' }}
               onClick={() => {
                 const next = !showOrderHistory;
                 setShowOrderHistory(next);
                 setShowAdminSettings(false);
-                // 패널이 열리는 경우에만 자동 스크롤
                 if (next) {
                   setTimeout(() => {
                     orderPanelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });

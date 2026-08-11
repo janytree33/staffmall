@@ -195,14 +195,13 @@ body {
 
 /* ───────── 헤더 & 모바일 반응형 ───────── */
 .header-card {
-  background: linear-gradient(135deg, rgba(255,255,255,0.32) 0%, rgba(209,250,229,0.32) 100%);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border-radius: 1.5rem;
-  box-shadow: 0 8px 32px rgba(6,182,212,0.18), 0 2px 8px rgba(52,211,153,0.12);
-  border: 1.5px solid rgba(255,255,255,0.5);
   padding: 1.5rem 2rem;
   display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
   align-items: center;
   justify-content: space-between;
   flex-wrap: wrap;
@@ -220,11 +219,7 @@ body {
   width: 54px;
   height: 54px;
   object-fit: contain;
-  border-radius: 50%;
-  box-shadow: 0 4px 12px rgba(6,182,212,0.25);
-  background-color: #ffffff;
-  padding: 3px;
-  border: 2.5px solid rgba(255,255,255,0.8);
+  background-color: transparent;
 }
 
 .header-title {
@@ -260,19 +255,7 @@ body {
   transition: all 0.15s;
 }
 
-.header-btn-admin {
-  background: rgba(255,255,255,0.88);
-  border: 1.5px solid rgba(255,255,255,0.9);
-  color: #065f46;
-  box-shadow: 0 2px 8px rgba(52,211,153,0.2);
-}
-
-.header-btn-order {
-  background: linear-gradient(135deg, #f43f5e 0%, #fb7185 100%);
-  border: none;
-  color: #ffffff;
-  box-shadow: 0 4px 12px rgba(244,63,94,0.4);
-}
+/* (기존 header-btn 파생 스타일 제거 - premium-btn으로 대체됨) */
 
 @media (max-width: 768px) {
   .header-card {

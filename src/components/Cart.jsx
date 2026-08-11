@@ -8,8 +8,8 @@ export default function Cart({ cartItems, onRemoveFromCart, onCheckout, quoteHis
   const totalItemCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
 
   return (
-    <div className="cart-container card animate-fade-in" style={{ animationDelay: '0.1s' }}>
-      <h2 className="text-gradient">장바구니</h2>
+    <div className="cart-container premium-card animate-fade-in" style={{ animationDelay: '0.1s', padding: 'var(--jt-space-6)' }}>
+      <h2 style={{ color: 'var(--jt-color-text)', fontWeight: 800, margin: '0 0 var(--jt-space-5) 0', fontSize: '1.5rem' }}>장바구니</h2>
       
       {cartItems.length === 0 ? (
         <div className="empty-cart">
@@ -29,9 +29,10 @@ export default function Cart({ cartItems, onRemoveFromCart, onCheckout, quoteHis
                   </div>
                 </div>
                 <div className="cart-item-actions">
-                  <span className="item-subtotal">{(item.price * item.quantity).toLocaleString()}원</span>
+                  <span className="item-subtotal" style={{ fontWeight: 700 }}>{(item.price * item.quantity).toLocaleString()}원</span>
                   <button 
-                    className="btn btn-danger btn-sm"
+                    className="premium-btn btn-sm"
+                    style={{ backgroundColor: 'var(--jt-seed-color-error)', color: 'white', padding: '0.2rem 0.6rem', fontSize: '0.8rem', height: 'auto' }}
                     onClick={() => onRemoveFromCart(item.cartItemId)}
                   >
                     삭제
@@ -42,9 +43,9 @@ export default function Cart({ cartItems, onRemoveFromCart, onCheckout, quoteHis
           </div>
 
           <div className="cart-summary">
-            <div className="total-row">
-              <span>총 결제액</span>
-              <span className="total-price text-gradient">{totalPrice.toLocaleString()} 원</span>
+            <div className="total-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem 0', borderTop: '2px solid var(--jt-color-border)' }}>
+              <span style={{ fontWeight: 700, fontSize: '1.1rem' }}>총 결제액</span>
+              <span className="total-price" style={{ color: 'var(--jt-color-accent)', fontWeight: 800, fontSize: '1.5rem' }}>{totalPrice.toLocaleString()} 원</span>
             </div>
 
             <div className="bank-account-info" style={{ margin: '1rem 0', padding: '1rem', backgroundColor: 'rgba(56, 189, 248, 0.1)', borderRadius: '8px', border: '1px solid rgba(56, 189, 248, 0.2)', textAlign: 'center' }}>
@@ -53,10 +54,11 @@ export default function Cart({ cartItems, onRemoveFromCart, onCheckout, quoteHis
             </div>
 
             <button 
-              className="btn btn-primary checkout-btn"
+              className="premium-btn checkout-btn"
+              style={{ width: '100%', height: 'var(--jt-control-height-lg)', fontSize: '1.1rem' }}
               onClick={onCheckout}
             >
-              견적서 복사하기 (총 {totalItemCount}건)
+              주문하기 (총 {totalItemCount}건)
             </button>
           </div>
         </>

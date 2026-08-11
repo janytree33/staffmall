@@ -67,11 +67,10 @@ export default function ProductList({ products = [], onAddToCart, onBatchAddToCa
           return (
             <div
               key={product.id}
-              className="card product-card"
+              className="premium-card product-card"
               style={{
                 opacity: 1,
-                transition: 'all 0.3s ease',
-                border: selection.quantity > 0 ? '2px solid #06b6d4' : '1.5px solid rgba(6,182,212,0.2)',
+                border: selection.quantity > 0 ? '2px solid var(--jt-color-accent)' : '1px solid transparent',
                 display: 'flex',
                 flexDirection: 'column',
                 justifyContent: 'space-between',
@@ -79,13 +78,12 @@ export default function ProductList({ products = [], onAddToCart, onBatchAddToCa
                 overflow: 'hidden'
               }}
             >
-              {/* 제품명+이미지 상단: 불투명한 그라데이션 배경 */}
+              {/* 제품명+이미지 상단 */}
               <div style={{
-                background: 'linear-gradient(135deg, rgba(255,255,255,0.97) 0%, rgba(224,242,254,0.97) 100%)',
                 padding: '1.25rem 1.25rem 1rem 1.25rem',
                 display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                 gap: '1rem',
-                borderBottom: '1.5px solid rgba(6,182,212,0.15)'
+                borderBottom: '1.5px solid var(--jt-color-split)'
               }}>
                 <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: '700', wordBreak: 'keep-all', lineHeight: '1.4', flex: 1 }}>
                   {product.name}
@@ -155,10 +153,10 @@ export default function ProductList({ products = [], onAddToCart, onBatchAddToCa
               </div>
 
               <button 
-                className="btn btn-primary add-to-cart-btn" 
+                className="premium-btn add-to-cart-btn" 
                 onClick={() => onAddToCart(product, selection.targetType, selection.quantity)} 
                 disabled={selection.quantity === 0}
-                style={{ margin: '0 1.25rem 1.25rem 1.25rem', width: 'calc(100% - 2.5rem)' }}
+                style={{ margin: '0 1.25rem 1.25rem 1.25rem', width: 'calc(100% - 2.5rem)', height: 'var(--jt-control-height-lg)' }}
               >
                 장바구니 담기
               </button>
