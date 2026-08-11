@@ -199,8 +199,17 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 1rem;
+  position: relative; /* 자식 요소 절대 위치 기준 */
+}
+
+.header-text-container {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  white-space: nowrap; /* 제목 줄바꿈 방지 */
 }
 
 
@@ -248,10 +257,20 @@ body {
 
 @media (max-width: 768px) {
   .header-card {
-    padding: 1.2rem 1rem;
     flex-direction: column;
     text-align: center;
+    padding: 1rem;
+    gap: 1rem;
   }
+  
+  .header-text-container {
+    position: relative;
+    left: auto;
+    transform: none;
+    white-space: normal;
+    width: 100%;
+  }
+
   .header-title-container {
     flex-direction: column;
     gap: 0.6rem;
