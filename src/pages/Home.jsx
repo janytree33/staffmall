@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import ProductList from '../components/ProductList';
 import Cart from '../components/Cart';
 import AdminPanel from '../components/AdminPanel'; // 🚀 새로 만든 관리자 패널
+import WelcomeModal from '../components/WelcomeModal'; // 🚀 신규 직원 이름/이력 연동 모달
 
 import { PURCHASE_LIMITS, TARGET_TYPES } from '../utils/constants';
 import { supabase } from '../supabaseClient'; 
