@@ -174,7 +174,10 @@ export default function ProductList({ products = [], onAddToCart, onBatchAddToCa
             gap: '1rem'
           }}
         >
-          <h3 style={{ margin: 0 }}>💡 구매 대상별 단가표</h3>
+          <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <span className="material-symbols-rounded" style={{ fontSize: '22px', fontVariationSettings: "'FILL' 0, 'wght' 400", marginRight: '6px' }}>table_view</span> 
+            구매 대상별 단가표
+          </h3>
           
           {/* 단가표 테이블 */}
           <div className="price-chart-table-container">
@@ -211,10 +214,10 @@ export default function ProductList({ products = [], onAddToCart, onBatchAddToCa
           <div 
             className="price-chart-notes" 
             style={{ 
-              background: '#1e293b', 
-              color: '#f8fafc',
+              background: 'var(--jt-color-primary)', // 다시 다크/검정(차콜) 테마로 유지
+              color: 'var(--jt-neutral-0)',
               padding: '1rem',
-              borderRadius: '8px',
+              borderRadius: 'var(--jt-r-md)',
               fontSize: '0.85rem',
               lineHeight: '1.6',
               display: 'flex',
@@ -227,9 +230,9 @@ export default function ProductList({ products = [], onAddToCart, onBatchAddToCa
             <span>※ 가족구매는 매달 5개 한정입니다.</span>
             <span>※ 지인구매는 수량제한 없습니다.</span>
             
-            {/* 💬 [수정 완료] '익일 자정까지' 반영 및 정렬 세팅 */}
+            {/* 💬 계좌 및 입금기한 안내 (배경은 검정, 강조색만 민트, 아이콘은 흰색) */}
             <div style={{ 
-              borderTop: '1px solid #334155', 
+              borderTop: '1px solid rgba(255, 255, 255, 0.15)', 
               paddingTop: '0.6rem', 
               marginTop: '0.4rem', 
               fontSize: '0.85rem',
@@ -237,13 +240,13 @@ export default function ProductList({ products = [], onAddToCart, onBatchAddToCa
               flexDirection: 'column',
               gap: '0.3rem'
             }}>
-              <div>
-                <span style={{ marginRight: '4px' }}>💰</span>
-                <span style={{ color: '#38bdf8', fontWeight: 'bold' }}>계좌:</span> 신한은행 100-026-244778 (주)제니트리
+              <div style={{ display: 'flex', alignItems: 'center' }}>
+                <span className="material-symbols-rounded" style={{ fontSize: '16px', fontVariationSettings: "'FILL' 0, 'wght' 400", marginRight: '6px', color: 'var(--jt-neutral-0)' }}>account_balance</span>
+                <span style={{ color: '#34d399', fontWeight: 'bold' }}>계좌:</span>&nbsp;<span style={{ color: 'var(--jt-neutral-0)' }}>신한은행 100-026-244778 (주)제니트리</span>
               </div>
-              <div>
-                <span style={{ marginRight: '4px' }}>⏰</span>
-                <span style={{ color: '#38bdf8', fontWeight: 'bold' }}>입금기한:</span> 익일 자정까지
+              <div style={{ display: 'flex', alignItems: 'center' }}>
+                <span className="material-symbols-rounded" style={{ fontSize: '16px', fontVariationSettings: "'FILL' 0, 'wght' 400", marginRight: '6px', color: 'var(--jt-neutral-0)' }}>schedule</span>
+                <span style={{ color: '#34d399', fontWeight: 'bold' }}>입금기한:</span>&nbsp;<span style={{ color: 'var(--jt-neutral-0)' }}>익일 자정까지</span>
               </div>
             </div>
           </div>

@@ -1,28 +1,36 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
+import { sendTelegramCancelAlert } from '../utils/notificationService';
 
 export default function MyPage() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [orders, setOrders] = useState([]);
   const [loadingOrders, setLoadingOrders] = useState(true);
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [targetOrderId, setTargetOrderId] = useState(null);
   const navigate = useNavigate();
 
   useEffect(() => {
-    // 현재 접속 중인 유저 확인
-    const fetchUser = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
+    const fetchUser = () => {
+      const storedUser = localStorage.getItem('custom_user');
       
-      if (!session) {
+      if (!storedUser) {
         alert('로그인이 필요한 서비스입니다.');
         navigate('/login');
         return;
       }
       
-      setUser(session.user);
-      setLoading(false);
-      fetchOrders(session.user.id);
+      try {
+        const parsedUser = JSON.parse(storedUser);
+        setUser(parsedUser);
+        setLoading(false);
+        fetchOrders(parsedUser.id);
+      } catch (e) {
+        alert('로그인 정보가 손상되었습니다. 다시 로그인해주세요.');
+        navigate('/login');
+      }
     };
 
     const fetchOrders = async (userId) => {
@@ -37,7 +45,7 @@ export default function MyPage() {
             created_at,
             order_items ( product_name, target_type, quantity, price )
           `)
-          .eq('user_id', userId)
+          .eq('member_id', userId)
           .order('created_at', { ascending: false });
 
         if (error) throw error;
@@ -52,9 +60,48 @@ export default function MyPage() {
     fetchUser();
   }, [navigate]);
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
+  const handleLogout = () => {
+    localStorage.removeItem('custom_user');
+    window.dispatchEvent(new Event('storage')); // Home.jsx 등에 로그아웃 이벤트 알림
     navigate('/');
+  };
+
+  const openCancelModal = (orderId) => {
+    setTargetOrderId(orderId);
+    setShowCancelModal(true);
+  };
+
+  const handleCancelOrder = async () => {
+    if (!targetOrderId) return;
+    
+    try {
+      const { error } = await supabase
+        .from('orders')
+        .update({ status: '주문취소' })
+        .eq('id', targetOrderId);
+
+      if (error) throw error;
+      
+      // 화면 갱신
+      const updatedOrders = orders.map(order => 
+        order.id === targetOrderId ? { ...order, status: '주문취소' } : order
+      );
+      setOrders(updatedOrders);
+      
+      // 🚀 텔레그램 취소 알림 발송
+      try {
+        await sendTelegramCancelAlert(user?.name, targetOrderId);
+      } catch (err) {
+        console.error('취소 알림 발송 오류:', err);
+      }
+      
+    } catch (err) {
+      console.error('주문 취소 실패:', err);
+      alert('주문 취소 중 오류가 발생했습니다.');
+    } finally {
+      setShowCancelModal(false);
+      setTargetOrderId(null);
+    }
   };
 
   if (loading) {
@@ -81,30 +128,34 @@ export default function MyPage() {
             <button 
               onClick={() => navigate('/')}
               style={{
+                display: 'inline-flex', alignItems: 'center',
                 padding: 'var(--jt-space-2) var(--jt-space-4)',
                 marginRight: 'var(--jt-space-3)',
                 backgroundColor: 'var(--jt-bg-container)',
                 border: '1px solid var(--jt-color-border)',
-                borderRadius: 'var(--jt-r-full)',
+                borderRadius: 'var(--jt-r-md)',
                 cursor: 'pointer',
                 fontWeight: 600,
                 color: 'var(--jt-color-text)'
               }}
             >
+              <span className="material-symbols-rounded" style={{ fontSize: '18px', marginRight: '6px' }}>shopping_cart</span>
               쇼핑하러 가기
             </button>
             <button 
               onClick={handleLogout}
               style={{
+                display: 'inline-flex', alignItems: 'center',
                 padding: 'var(--jt-space-2) var(--jt-space-4)',
                 backgroundColor: 'transparent',
                 border: '1px solid var(--jt-color-border)',
-                borderRadius: 'var(--jt-r-full)',
+                borderRadius: 'var(--jt-r-md)',
                 cursor: 'pointer',
                 fontWeight: 600,
                 color: 'var(--jt-color-text-secondary)'
               }}
             >
+              <span className="material-symbols-rounded" style={{ fontSize: '18px', marginRight: '6px' }}>logout</span>
               로그아웃
             </button>
           </div>
@@ -115,12 +166,15 @@ export default function MyPage() {
           padding: 'var(--jt-space-6)',
           marginBottom: 'var(--jt-space-6)'
         }}>
-          <h2 style={{ fontSize: '18px', margin: '0 0 var(--jt-space-5) 0', color: 'var(--jt-color-text)', fontWeight: 800 }}>👤 로그인 정보</h2>
+          <h2 style={{ fontSize: '18px', margin: '0 0 var(--jt-space-5) 0', color: 'var(--jt-color-text)', fontWeight: 800, display: 'flex', alignItems: 'center' }}>
+            <span className="material-symbols-rounded" style={{ fontSize: '22px', marginRight: 'var(--jt-space-2)', color: 'var(--jt-color-primary)', fontVariationSettings: "'FILL' 0, 'wght' 400" }}>eco</span>
+            로그인 정보
+          </h2>
           
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--jt-space-4)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'var(--jt-neutral-50)', padding: 'var(--jt-space-4)', borderRadius: 'var(--jt-r-md)' }}>
-              <span style={{ color: 'var(--jt-color-text-secondary)', fontWeight: 600 }}>이메일 계정</span>
-              <span style={{ color: 'var(--jt-color-text)', fontWeight: 700, fontSize: '16px' }}>{user?.email}</span>
+              <span style={{ color: 'var(--jt-color-text-secondary)', fontWeight: 600 }}>직원 성함</span>
+              <span style={{ color: 'var(--jt-color-text)', fontWeight: 700, fontSize: '16px' }}>{user?.name}</span>
             </div>
             
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 'var(--jt-space-2)' }}>
@@ -145,7 +199,10 @@ export default function MyPage() {
         <div className="premium-card" style={{
           padding: 'var(--jt-space-6)'
         }}>
-          <h2 style={{ fontSize: '18px', margin: '0 0 var(--jt-space-5) 0', color: 'var(--jt-color-text)', fontWeight: 800 }}>📦 내 주문 내역</h2>
+          <h2 style={{ fontSize: '18px', margin: '0 0 var(--jt-space-5) 0', color: 'var(--jt-color-text)', fontWeight: 800, display: 'flex', alignItems: 'center' }}>
+            <span className="material-symbols-rounded" style={{ fontSize: '22px', marginRight: 'var(--jt-space-2)', color: 'var(--jt-color-primary)', fontVariationSettings: "'FILL' 0, 'wght' 400" }}>eco</span>
+            내 주문 내역
+          </h2>
           
           {loadingOrders ? (
             <div style={{ padding: 'var(--jt-space-6) 0', textAlign: 'center', color: 'var(--jt-color-text-tertiary)' }}>
@@ -168,9 +225,9 @@ export default function MyPage() {
                       {new Date(order.created_at).toLocaleString()}
                     </span>
                     <span style={{ 
-                      fontWeight: 700, 
-                      color: order.status === '주문취소' ? 'var(--jt-seed-color-error)' : 
-                             order.status === '입금완료' ? 'var(--jt-seed-color-success)' : 'var(--jt-seed-color-info)' 
+                      padding: '0.3rem 0.6rem', borderRadius: 'var(--jt-r-md)', fontSize: '0.8rem', fontWeight: 'bold',
+                      backgroundColor: order.status === '입금대기' ? 'var(--jt-neutral-100)' : order.status === '입금완료' ? '#ecfdf5' : 'var(--jt-danger-50)',
+                      color: order.status === '입금대기' ? 'var(--jt-neutral-700)' : order.status === '입금완료' ? '#047857' : 'var(--jt-color-danger)'
                     }}>
                       {order.status}
                     </span>
@@ -183,23 +240,85 @@ export default function MyPage() {
                           {item.product_name} <span style={{ color: 'var(--jt-color-text-tertiary)', fontSize: '12px' }}>({item.target_type})</span>
                         </span>
                         <span style={{ color: 'var(--jt-color-text)', fontWeight: 500 }}>
-                          {item.quantity}개
+                          {item.quantity}개 <span style={{ color: 'var(--jt-color-text-tertiary)', fontSize: '13px', marginLeft: 'var(--jt-space-2)' }}>{(item.price || 0).toLocaleString()}원</span>
                         </span>
                       </li>
                     ))}
                   </ul>
 
-                  <div style={{ textAlign: 'right', marginTop: 'var(--jt-space-3)', paddingTop: 'var(--jt-space-3)', borderTop: '1px dashed var(--jt-color-border)' }}>
-                    <span style={{ fontSize: '13px', color: 'var(--jt-color-text-secondary)', marginRight: 'var(--jt-space-2)' }}>총 결제 금액:</span>
-                    <span style={{ fontSize: '16px', fontWeight: 700, color: 'var(--jt-color-text)' }}>{order.total_price?.toLocaleString()}원</span>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'var(--jt-space-3)', paddingTop: 'var(--jt-space-3)', borderTop: '1px dashed var(--jt-color-border)' }}>
+                    {order.status === '입금대기' ? (
+                      <button 
+                        onClick={() => openCancelModal(order.id)}
+                        style={{ 
+                          padding: 'var(--jt-space-2) var(--jt-space-4)', 
+                          fontSize: '13px', 
+                          fontWeight: 600,
+                          backgroundColor: 'var(--jt-neutral-0)', 
+                          color: 'var(--jt-seed-color-error)',
+                          border: '1px solid var(--jt-seed-color-error)',
+                          borderRadius: 'var(--jt-r-md)',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        주문 취소
+                      </button>
+                    ) : (
+                      <div></div>
+                    )}
+                    <div>
+                      <span style={{ fontSize: '13px', color: 'var(--jt-color-text-secondary)', marginRight: 'var(--jt-space-2)' }}>총 결제 금액:</span>
+                      <span style={{ fontSize: '16px', fontWeight: 700, color: 'var(--jt-color-text)' }}>{order.total_price?.toLocaleString()}원</span>
+                    </div>
                   </div>
                 </div>
               ))}
             </div>
           )}
         </div>
-
       </div>
+
+      {/* 🛑 주문 취소 모달 */}
+      {showCancelModal && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', 
+          backgroundColor: 'var(--jt-dim-50)', backdropFilter: 'blur(4px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 9999
+        }}>
+          <div className="card animate-fade-in" style={{ width: '90%', maxWidth: '400px', backgroundColor: 'var(--jt-neutral-0)', padding: 'var(--jt-space-7)', borderRadius: 'var(--jt-r-xl)', boxShadow: 'var(--jt-shadow-2xl)' }}>
+            <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
+              <span className="material-symbols-rounded" style={{ fontSize: '2.5rem', marginBottom: '0.5rem', color: 'var(--jt-seed-color-error)' }}>cancel</span>
+              <h2 style={{ fontSize: '1.2rem', fontWeight: '800', color: 'var(--jt-color-text)', margin: 0 }}>주문 취소</h2>
+            </div>
+            <p style={{ fontSize: '0.95rem', color: 'var(--jt-color-text-secondary)', marginBottom: '1.5rem', textAlign: 'center', lineHeight: '1.5' }}>
+              정말로 이 주문을 취소하시겠습니까?<br/>취소된 주문은 복구할 수 없습니다.
+            </p>
+
+            <div style={{ display: 'flex', gap: '0.75rem' }}>
+              <button 
+                onClick={() => { setShowCancelModal(false); setTargetOrderId(null); }}
+                style={{
+                  flex: 1, padding: 'var(--jt-space-4)', borderRadius: 'var(--jt-r-md)',
+                  border: '1px solid var(--jt-color-border)', background: 'var(--jt-neutral-0)',
+                  color: 'var(--jt-neutral-700)', fontWeight: '700', cursor: 'pointer', fontSize: '0.9rem'
+                }}
+              >
+                닫기
+              </button>
+              <button 
+                onClick={handleCancelOrder}
+                style={{
+                  flex: 1, padding: 'var(--jt-space-4)', borderRadius: 'var(--jt-r-md)',
+                  border: 'none',
+                  background: 'var(--jt-seed-color-error)',
+                  color: 'var(--jt-neutral-0)', fontWeight: '700', cursor: 'pointer', fontSize: '0.9rem'
+                }}
+              >
+                취소 확인
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

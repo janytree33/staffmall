@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import ProductList from '../components/ProductList';
 import Cart from '../components/Cart';
 import AdminPanel from '../components/AdminPanel'; // 🚀 새로 만든 관리자 패널
-import WelcomeModal from '../components/WelcomeModal'; // 🚀 신규 직원 이름/이력 연동 모달
+import { sendTelegramOrderAlert } from '../utils/notificationService';
 
 import { PURCHASE_LIMITS, TARGET_TYPES } from '../utils/constants';
 import { supabase } from '../supabaseClient'; 
@@ -22,6 +22,7 @@ function Home() {
   const [authName, setAuthName] = useState('');
   const [authPhone, setAuthPhone] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [orderSuccessData, setOrderSuccessData] = useState(null);
 
   // 관리자 패널 관련 상태
   const [showAdminSettings, setShowAdminSettings] = useState(false);
@@ -185,17 +186,8 @@ function Home() {
 
     try {
       // 1. 직원 정보 확인 (프로필에서 이름 가져오기)
-      let ordererName = user.email.split('@')[0];
-      const { data: profile } = await supabase
-        .from('employee_profiles')
-        .select('name')
-        .eq('id', user.id)
-        .single();
+      const ordererName = user.name;
       
-      if (profile && profile.name) {
-        ordererName = profile.name;
-      }
-
       // 3. 당월 누적 구매 수량 조회 ('주문취소' 제외)
       const startOfMonth = new Date();
       startOfMonth.setDate(1);
@@ -208,7 +200,7 @@ function Home() {
           status,
           order_items ( product_id, product_name, target_type, quantity )
         `)
-        .eq('user_id', user.id)
+        .eq('member_id', user.id)
         .neq('status', '주문취소')
         .gte('created_at', startOfMonth.toISOString());
 
@@ -254,7 +246,7 @@ function Home() {
       const { data: newOrder, error: insertOrderErr } = await supabase
         .from('orders')
         .insert({
-          user_id: user.id,
+          member_id: user.id,
           total_price: totalPrice,
           status: '입금대기'
         })
@@ -279,21 +271,7 @@ function Home() {
 
       if (insertItemsErr) throw insertItemsErr;
 
-      // 📋 6. 회계 담당자 전용 견적서 복사
-      const dateString = new Date().toLocaleString();
-      const itemDetails = cartItems.map((item, index) => 
-        `${index + 1}. ${item.product.name} (${item.targetType}) - ${item.quantity}개 / ${item.price.toLocaleString()}원`
-      ).join('\n');
-
-      const textToCopy = `[임직원 화장품 구매 견적서]\n주문자: ${ordererName}\n주문일시: ${dateString}\n\n${itemDetails}\n-------------------------\n총 결제 금액: ${totalPrice.toLocaleString()}원\n입금 계좌: 신한은행 100-026-244778 (주)제니트리`;
-
-      try {
-        await navigator.clipboard.writeText(textToCopy);
-      } catch (err) {
-        console.error('클립보드 복사 실패:', err);
-      }
-
-      // 7. NTFY 푸시 알림 발송
+      // 6. NTFY 푸시 알림 발송 (기존 유지)
       const ntfyTopic = import.meta.env.VITE_NTFY_TOPIC || 'janytree_order_alert';
       try {
         await fetch(`https://ntfy.sh/${ntfyTopic}`, {
@@ -308,8 +286,20 @@ function Home() {
         console.error("푸시 알림 발송 실패:", e);
       }
 
-      // 8. 주문 완료 후 화면 처리
-      alert(`🎉 주문 신청이 완료되었습니다!\n\n견적서 내용이 클립보드에 복사되었습니다. 카카오톡이나 메신저로 회계담당자에게 바로 붙여넣기(Ctrl+V) 해주세요.\n\n총 결제 금액: ${totalPrice.toLocaleString()}원\n입금 계좌: 신한은행 100-026-244778 (주)제니트리\n\n입금이 확인되면 상품이 지급됩니다.`);
+      // 🚀 7. 텔레그램 알림 발송 추가
+      try {
+        await sendTelegramOrderAlert({
+          memberName: ordererName,
+          items: itemsToInsert,
+          totalPrice: totalPrice,
+          status: '입금대기'
+        });
+      } catch (e) {
+        console.error('텔레그램 알림 발송 중 오류:', e);
+      }
+
+      // 8. 주문 완료 후 화면 처리 (내부 모달 호출)
+      setOrderSuccessData({ totalPrice });
       setCartItems([]);
       setShowAuthModal(false);
       setAuthName('');
@@ -342,7 +332,7 @@ function Home() {
           status,
           created_at,
           members ( name, phone_last_4_hashed ),
-          order_items ( product_name, target_type, quantity )
+          order_items ( product_name, target_type, quantity, price )
         `)
         .gte('created_at', startRange)
         .lt('created_at', endRange)
@@ -361,11 +351,11 @@ function Home() {
     const nextStatus = currentStatus === '입금대기' ? '입금완료' : '입금대기';
     const confirmMsg = nextStatus === '입금완료'
       ? "이 주문을 '입금완료' 상태로 변경하시겠습니까?"
-      : "⚠️ 이미 완료된 건입니다. 다시 '입금대기' 상태로 되돌리시겠습니까?";
+      : "이미 완료된 건입니다. 다시 '입금대기' 상태로 되돌리시겠습니까?";
 
     // prompt() 대신 커스텀 모달 사용 (첫 글자 표시 + 나머지 마스킹)
     openPwdModal(
-      `💼 회계 담당자 승인 (${nextStatus} 처리)`,
+      `회계 담당자 승인 (${nextStatus} 처리)`,
       async () => {
         if (!window.confirm(confirmMsg)) return;
         try {
@@ -374,7 +364,7 @@ function Home() {
             .update({ status: nextStatus })
             .eq('id', orderId);
           if (error) throw error;
-          alert(`👍 주문 상태가 [${nextStatus}]로 변경되었습니다.`);
+          alert(`주문 상태가 [${nextStatus}]로 변경되었습니다.`);
           fetchAdminOrders();
         } catch (e) {
           console.error(e);
@@ -410,14 +400,24 @@ function Home() {
 
   // 🔥 앱 최초 로드 시 Products와 Members를 실시간 동기화 및 Auth 체크
   useEffect(() => {
-    // 1. 유저 인증 상태 확인
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
-    });
+    // 1. 커스텀 유저 인증 상태 확인
+    const checkCustomUser = () => {
+      const storedUser = localStorage.getItem('custom_user');
+      if (storedUser) {
+        try {
+          setUser(JSON.parse(storedUser));
+        } catch (e) {
+          setUser(null);
+        }
+      } else {
+        setUser(null);
+      }
+    };
+    checkCustomUser();
 
-    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-    });
+    // 혹시 다른 탭에서 로그인/로그아웃했을 때 감지하기 위해 storage 이벤트 추가
+    const handleStorageChange = () => checkCustomUser();
+    window.addEventListener('storage', handleStorageChange);
 
     // 2. 데이터 가져오기
     const fetchDynamicData = async () => {
@@ -451,7 +451,7 @@ function Home() {
 
     return () => {
       supabase.removeChannel(subscription);
-      authListener.subscription.unsubscribe();
+      window.removeEventListener('storage', handleStorageChange);
     };
   }, []);
 
@@ -519,10 +519,11 @@ function Home() {
             {user ? (
               <button 
                 className="premium-btn"
-                style={{ backgroundColor: 'var(--jt-neutral-100)', color: 'var(--jt-neutral-800)', border: '1px solid var(--jt-color-border)', height: 'var(--jt-control-height)' }}
+                style={{ backgroundColor: 'var(--jt-neutral-100)', color: 'var(--jt-neutral-800)', border: '1px solid var(--jt-color-border)', height: 'var(--jt-control-height)', display: 'flex', alignItems: 'center', gap: '4px' }}
                 onClick={() => navigate('/mypage')}
               >
-                👤 마이페이지
+                <span className="material-symbols-rounded" style={{ fontSize: '18px', fontVariationSettings: "'FILL' 0, 'wght' 400" }}>eco</span>
+                마이페이지
               </button>
             ) : (
               <button 
@@ -533,42 +534,29 @@ function Home() {
                 🔐 직원 로그인
               </button>
             )}
-            <button 
-              className="premium-btn"
-              style={{ backgroundColor: 'transparent', color: 'var(--jt-neutral-600)', border: '1px solid var(--jt-color-border)', height: 'var(--jt-control-height)' }}
-              onClick={() => {
-                if (showAdminSettings) {
-                  setShowAdminSettings(false);
-                } else {
-                  openPwdModal('⚙️ 관리자 확인', () => {
+            {/* 관리자 전용 메뉴: 특정 이메일로 로그인했을 때만 노출 */}
+            {user?.email === 'info@janytree.com' && (
+              <button 
+                className="premium-btn"
+                style={{ backgroundColor: 'transparent', color: 'var(--jt-neutral-600)', border: '1px solid var(--jt-color-border)', height: 'var(--jt-control-height)' }}
+                onClick={() => {
+                  if (showAdminSettings) {
+                    setShowAdminSettings(false);
+                  } else {
+                    // 이미 로그인된 관리자 계정이므로 비밀번호 재입력 없이 즉시 오픈
                     setShowAdminSettings(true);
-                    setShowOrderHistory(false);
+                    setShowOrderHistory(true); // 관리 설정 열 때 주문 현황도 같이 엶
                     setTimeout(() => {
                       adminPanelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
                     }, 100);
-                  });
-                }
-              }}
-            >
-              ⚙️ 관리 설정 {showAdminSettings ? '닫기' : '열기'}
-            </button>
+                  }
+                }}
+              >
+                ⚙️ 관리 설정 {showAdminSettings ? '닫기' : '열기'}
+              </button>
+            )}
             
-            <button 
-              className="premium-btn"
-              style={{ backgroundColor: 'var(--jt-color-accent)', color: 'var(--jt-neutral-0)', height: 'var(--jt-control-height)' }}
-              onClick={() => {
-                const next = !showOrderHistory;
-                setShowOrderHistory(next);
-                setShowAdminSettings(false);
-                if (next) {
-                  setTimeout(() => {
-                    orderPanelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                  }, 100);
-                }
-              }}
-            >
-              📦 주문 현황 {showOrderHistory ? '닫기' : '열기'}
-            </button>
+            {/* 주문 현황 버튼 삭제: 일반 직원은 마이페이지에서 본인 기록만 보고, 전체 현황은 관리 설정 안에 통합됨 */}
           </div>
         </div>
       </header>
@@ -609,7 +597,7 @@ function Home() {
             <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
               <span className="material-symbols-rounded" style={{ fontSize: '2.5rem', marginBottom: '0.5rem', color: 'var(--jt-neutral-600)' }}>lock</span>
               <h2 style={{ fontSize: '1.2rem', fontWeight: '800', color: 'var(--jt-color-text)', margin: 0 }}>
-                {pwdModalTitle ? pwdModalTitle.replace(/[⚙️🔒]\s*/g, '') : '관리자 확인'}
+                {pwdModalTitle || '관리자 확인'}
               </h2>
               <p style={{ fontSize: '0.85rem', color: 'var(--jt-color-text-secondary)', marginTop: '0.3rem' }}>비밀번호를 입력해 주세요</p>
             </div>
@@ -685,29 +673,40 @@ function Home() {
       {showAuthModal && (
         <div style={{
           position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', 
-          backgroundColor: 'rgba(0,0,0,0.6)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 9999
+          backgroundColor: 'var(--jt-dim-50)', backdropFilter: 'blur(4px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 9999
         }}>
-          <div className="card animate-fade-in" style={{ width: '90%', maxWidth: '400px', backgroundColor: 'var(--jt-bg-container)', padding: 'var(--jt-space-7)', borderRadius: 'var(--jt-r-lg)' }}>
-            <h2 style={{ marginBottom: '1.5rem', color: 'var(--jt-color-text)', textAlign: 'center' }}>주문 확인</h2>
+          <div className="card animate-fade-in" style={{ width: '90%', maxWidth: '400px', backgroundColor: 'var(--jt-neutral-0)', padding: 'var(--jt-space-7)', borderRadius: 'var(--jt-r-xl)', boxShadow: 'var(--jt-shadow-2xl)' }}>
+            <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
+              <span className="material-symbols-rounded" style={{ fontSize: '2.5rem', marginBottom: '0.5rem', color: 'var(--jt-color-primary)' }}>shopping_cart_checkout</span>
+              <h2 style={{ fontSize: '1.2rem', fontWeight: '800', color: 'var(--jt-color-text)', margin: 0 }}>주문 확인</h2>
+            </div>
             <p style={{ fontSize: '0.95rem', color: 'var(--jt-color-text-secondary)', marginBottom: '1.5rem', textAlign: 'center', lineHeight: '1.5' }}>
               장바구니에 담은 상품들을<br/>최종 주문 접수하시겠습니까?
             </p>
 
-            <div style={{ display: 'flex', gap: '1rem' }}>
+            <div style={{ display: 'flex', gap: '0.75rem' }}>
               <button 
-                className="btn btn-primary" 
-                style={{ flex: 1 }} 
-                onClick={processOrder}
-                disabled={isProcessing}
-              >
-                {isProcessing ? '처리중...' : '주문 접수하기'}
-              </button>
-              <button 
-                className="btn" 
-                style={{ flex: 1, backgroundColor: '#e2e8f0' }} 
                 onClick={() => setShowAuthModal(false)}
+                style={{
+                  flex: 1, padding: 'var(--jt-space-4)', borderRadius: 'var(--jt-r-md)',
+                  border: '1px solid var(--jt-color-border)', background: 'var(--jt-neutral-0)',
+                  color: 'var(--jt-neutral-700)', fontWeight: '700', cursor: 'pointer', fontSize: '0.9rem'
+                }}
               >
                 취소
+              </button>
+              <button 
+                onClick={processOrder}
+                disabled={isProcessing}
+                style={{
+                  flex: 1, padding: 'var(--jt-space-4)', borderRadius: 'var(--jt-r-md)',
+                  border: 'none',
+                  background: 'var(--jt-color-primary)',
+                  color: 'var(--jt-neutral-0)', fontWeight: '700', cursor: 'pointer', fontSize: '0.9rem',
+                  opacity: isProcessing ? 0.7 : 1
+                }}
+              >
+                {isProcessing ? '처리중...' : '주문 접수하기'}
               </button>
             </div>
           </div>
@@ -716,33 +715,33 @@ function Home() {
 
       {/* 🛠 1. 신규 종합 관리자 패널 (직원 및 품목) */}
       {showAdminSettings && (
-        <div ref={adminPanelRef} style={{ marginTop: '1rem', marginBottom: '3rem', animation: 'fadeIn 0.3s ease-out' }}>
+        <div ref={adminPanelRef} style={{ marginTop: '1rem', marginBottom: '1rem', animation: 'fadeIn 0.3s ease-out' }}>
           <AdminPanel members={members} products={products} />
         </div>
       )}
 
-      {/* 🛠 2. 기존 주문 현황 패널 */}
-      {showOrderHistory && (
-        <div ref={orderPanelRef} style={{ marginTop: '1rem', marginBottom: '3rem', animation: 'fadeIn 0.3s ease-out' }}>
-          <div className="card" style={{ padding: '1.5rem', border: '2px solid #334155' }}>
+      {/* 🛠 2. 기존 주문 현황 패널 (이제 showAdminSettings 와 묶임) */}
+      {showAdminSettings && (
+        <div ref={orderPanelRef} style={{ marginBottom: '3rem', animation: 'fadeIn 0.3s ease-out' }}>
+          <div className="card" style={{ padding: '1.5rem', border: '1px solid var(--jt-color-border)' }}>
           
           {/* 상단 컨트롤 영역 (타이틀 및 월 선택 박스) */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
             <h2 style={{ margin: 0 }}>🛡️ 주문 현황 및 취소 관리 패널</h2>
             
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <label style={{ fontWeight: 'bold', fontSize: '0.9rem', color: '#475569' }}>조회 월 선택:</label>
+              <label style={{ fontWeight: 'bold', fontSize: '0.9rem', color: 'var(--jt-color-text-secondary)' }}>조회 월 선택:</label>
               <input 
                 type="month" 
                 value={selectedMonth} 
                 onChange={(e) => setSelectedMonth(e.target.value)}
                 style={{
                   padding: '0.4rem 0.6rem',
-                  borderRadius: '6px',
-                  border: '1px solid #cbd5e1',
+                  borderRadius: 'var(--jt-r-md)',
+                  border: '1px solid var(--jt-color-border)',
                   fontSize: '0.9rem',
                   fontWeight: 'bold',
-                  color: 'var(--color-primary)',
+                  color: 'var(--jt-color-primary)',
                   cursor: 'pointer'
                 }}
               />
@@ -750,56 +749,61 @@ function Home() {
           </div>
 
           {/* 🔥 대량 주문 대비: 최대 높이를 500px로 제한하고 내부 스크롤 바를 생성합니다. */}
-          <div style={{ overflowX: 'auto', maxHeight: '530px', overflowY: 'auto', border: '1px solid #e2e8f0', borderRadius: '8px' }}>
+          <div style={{ overflowX: 'auto', maxHeight: '530px', overflowY: 'auto', border: '1px solid var(--jt-color-border)', borderRadius: 'var(--jt-r-md)' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem', textAlign: 'center' }}>
-              <thead style={{ backgroundColor: '#f1f5f9', position: 'sticky', top: 0, zIndex: 10 }}>
+              <thead style={{ backgroundColor: 'var(--jt-neutral-50)', position: 'sticky', top: 0, zIndex: 10 }}>
                 <tr>
-                  <th style={{ padding: '0.8rem', border: '1px solid #cbd5e1' }}>주문일시</th>
-                  <th style={{ padding: '0.8rem', border: '1px solid #cbd5e1', width: '35%' }}>직원 및 상세 주문 품목</th>
-                  <th style={{ padding: '0.8rem', border: '1px solid #cbd5e1' }}>총 결제액</th>
-                  <th style={{ padding: '0.8rem', border: '1px solid #cbd5e1' }}>현재 상태</th>
-                  <th style={{ padding: '0.8rem', border: '1px solid #cbd5e1' }}>관리</th>
+                  <th style={{ padding: '0.8rem', border: '1px solid var(--jt-color-border)' }}>주문일시</th>
+                  <th style={{ padding: '0.8rem', border: '1px solid var(--jt-color-border)', width: '35%' }}>직원 및 상세 주문 품목</th>
+                  <th style={{ padding: '0.8rem', border: '1px solid var(--jt-color-border)' }}>총 결제액</th>
+                  <th style={{ padding: '0.8rem', border: '1px solid var(--jt-color-border)' }}>현재 상태</th>
+                  <th style={{ padding: '0.8rem', border: '1px solid var(--jt-color-border)' }}>관리</th>
                 </tr>
               </thead>
               <tbody>
                 {adminOrders.map(order => (
-                  <tr key={order.id} style={{ borderBottom: '1px solid #e2e8f0', opacity: order.status === '주문취소' ? 0.6 : 1 }}>
-                    <td style={{ padding: '1rem 0.8rem', border: '1px solid #cbd5e1', verticalAlign: 'middle', textDecoration: order.status === '주문취소' ? 'line-through' : 'none' }}>
+                  <tr key={order.id} style={{ borderBottom: '1px solid var(--jt-color-border)', opacity: order.status === '주문취소' ? 0.6 : 1 }}>
+                    <td style={{ padding: '1rem 0.8rem', border: '1px solid var(--jt-color-border)', verticalAlign: 'middle', textDecoration: order.status === '주문취소' ? 'line-through' : 'none' }}>
                       {new Date(order.created_at).toLocaleString()}
                     </td>
-                    <td style={{ padding: '1rem 1rem', border: '1px solid #cbd5e1', textAlign: 'left', verticalAlign: 'middle' }}>
-                      <div style={{ fontWeight: 'bold', fontSize: '1.05rem', color: order.status === '주문취소' ? '#94a3b8' : 'var(--color-primary)', marginBottom: '0.5rem', textDecoration: order.status === '주문취소' ? 'line-through' : 'none' }}>
-                        👤 {order.members?.name} 직원님
+                    <td style={{ padding: '1rem 1rem', border: '1px solid var(--jt-color-border)', textAlign: 'left', verticalAlign: 'middle' }}>
+                      <div style={{ fontWeight: 'bold', fontSize: '1.05rem', color: order.status === '주문취소' ? 'var(--jt-neutral-400)' : 'var(--jt-color-primary)', marginBottom: '0.5rem', textDecoration: order.status === '주문취소' ? 'line-through' : 'none' }}>
+                        <span className="material-symbols-rounded" style={{ fontSize: '18px', marginRight: '6px', verticalAlign: 'text-bottom' }}>person</span> 
+                        {order.members?.name} 직원님
                       </div>
-                      <div style={{ backgroundColor: order.status === '주문취소' ? '#f1f5f9' : '#f8fafc', padding: '0.6rem', borderRadius: '6px', border: '1px dashed #cbd5e1' }}>
+                      <div style={{ backgroundColor: order.status === '주문취소' ? 'var(--jt-neutral-50)' : 'var(--jt-neutral-0)', padding: '0.6rem', borderRadius: 'var(--jt-r-md)', border: '1px dashed var(--jt-color-border)' }}>
                         {order.order_items && order.order_items.map((item, idx) => (
-                          <div key={idx} style={{ fontSize: '0.85rem', color: order.status === '주문취소' ? '#94a3b8' : '#334155', padding: '0.15rem 0', textDecoration: order.status === '주문취소' ? 'line-through' : 'none' }}>
-                            📦 {item.product_name} <span style={{ color: '#64748b' }}>({item.target_type})</span> — <strong>{item.quantity}개</strong>
+                          <div key={idx} style={{ fontSize: '0.85rem', color: order.status === '주문취소' ? 'var(--jt-neutral-400)' : 'var(--jt-color-text-secondary)', padding: '0.15rem 0', textDecoration: order.status === '주문취소' ? 'line-through' : 'none' }}>
+                            <span className="material-symbols-rounded" style={{ fontSize: '16px', marginRight: '6px', verticalAlign: 'text-bottom' }}>inventory_2</span> 
+                            {item.product_name} <span style={{ color: 'var(--jt-neutral-500)' }}>({item.target_type})</span> — <strong>{item.quantity}개</strong> <span style={{ color: 'var(--jt-neutral-400)', fontSize: '0.8rem', marginLeft: '4px' }}>{(item.price || 0).toLocaleString()}원</span>
                           </div>
                         ))}
                       </div>
                     </td>
-                    <td style={{ padding: '1rem 0.8rem', border: '1px solid #cbd5e1', verticalAlign: 'middle', fontWeight: 'bold', color: order.status === '주문취소' ? '#94a3b8' : '#0f172a', textDecoration: order.status === '주문취소' ? 'line-through' : 'none' }}>
+                    <td style={{ padding: '1rem 0.8rem', border: '1px solid var(--jt-color-border)', verticalAlign: 'middle', fontWeight: 'bold', color: order.status === '주문취소' ? 'var(--jt-neutral-400)' : 'var(--jt-color-text)', textDecoration: order.status === '주문취소' ? 'line-through' : 'none' }}>
                       {order.total_price.toLocaleString()}원
                     </td>
-                    <td style={{ padding: '1rem 0.8rem', border: '1px solid #cbd5e1', verticalAlign: 'middle' }}>
+                    <td style={{ padding: '1rem 0.8rem', border: '1px solid var(--jt-color-border)', verticalAlign: 'middle' }}>
                       <span style={{ 
-                        padding: '0.3rem 0.6rem', borderRadius: '4px', fontSize: '0.8rem', fontWeight: 'bold',
-                        backgroundColor: order.status === '입금대기' ? '#fef08a' : order.status === '입금완료' ? '#bbf7d0' : '#fecaca',
-                        color: order.status === '입금대기' ? '#854d0e' : order.status === '입금완료' ? '#166534' : '#991b1b'
+                        padding: '0.3rem 0.6rem', borderRadius: 'var(--jt-r-md)', fontSize: '0.8rem', fontWeight: 'bold',
+                        backgroundColor: order.status === '입금대기' ? 'var(--jt-neutral-100)' : order.status === '입금완료' ? '#ecfdf5' : 'var(--jt-danger-50)',
+                        color: order.status === '입금대기' ? 'var(--jt-neutral-700)' : order.status === '입금완료' ? '#047857' : 'var(--jt-color-danger)'
                       }}>
                         {order.status}
                       </span>
                     </td>
-                    <td style={{ padding: '1rem 0.8rem', border: '1px solid #cbd5e1', verticalAlign: 'middle' }}>
+                    <td style={{ padding: '1rem 0.8rem', border: '1px solid var(--jt-color-border)', verticalAlign: 'middle' }}>
                       <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center', alignItems: 'center' }}>
                         {order.status !== '주문취소' && (
                           <button 
-                            className="btn btn-sm" 
                             style={{ 
                               padding: '0.4rem 0.8rem', fontSize: '0.8rem',
-                              backgroundColor: order.status === '입금대기' ? 'var(--color-primary)' : '#64748b', 
-                              color: 'white' 
+                              backgroundColor: order.status === '입금대기' ? 'var(--jt-color-primary)' : 'var(--jt-neutral-500)', 
+                              color: 'var(--jt-neutral-0)',
+                              border: 'none',
+                              borderRadius: 'var(--jt-r-md)',
+                              cursor: 'pointer',
+                              fontWeight: '600'
                             }}
                             onClick={() => handleUpdateStatus(order.id, order.status)}
                           >
@@ -809,15 +813,22 @@ function Home() {
                         
                         {order.status !== '주문취소' && (
                           <button 
-                            className="btn btn-sm" 
-                            style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem', backgroundColor: '#ef4444', color: 'white' }}
+                            style={{ 
+                              padding: '0.4rem 0.8rem', fontSize: '0.8rem', 
+                              backgroundColor: 'var(--jt-seed-color-error)', 
+                              color: 'var(--jt-neutral-0)', 
+                              border: 'none',
+                              borderRadius: 'var(--jt-r-md)',
+                              cursor: 'pointer',
+                              fontWeight: '600'
+                            }}
                             onClick={() => handleCancelOrder(order.id)}
                           >
                             주문취소
                           </button>
                         )}
                         {order.status === '주문취소' && (
-                          <span style={{ fontSize: '0.8rem', color: '#94a3b8', fontStyle: 'italic' }}>한도복구완료</span>
+                          <span style={{ fontSize: '0.8rem', color: 'var(--jt-neutral-400)', fontStyle: 'italic' }}>한도복구완료</span>
                         )}
                       </div>
                     </td>
@@ -825,13 +836,60 @@ function Home() {
                 ))}
                 {adminOrders.length === 0 && (
                   <tr>
-                    <td colSpan="5" style={{ padding: '3rem', color: 'gray' }}> 선택하신 달({selectedMonth})의 주문 내역이 없습니다.</td>
+                    <td colSpan="5" style={{ padding: '3rem', color: 'var(--jt-color-text-tertiary)' }}> 선택하신 달({selectedMonth})의 주문 내역이 없습니다.</td>
                   </tr>
                 )}
               </tbody>
             </table>
           </div>
         </div>
+        </div>
+      )}
+
+      {/* 🎉 주문 성공 모달 */}
+      {orderSuccessData && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', 
+          backgroundColor: 'var(--jt-dim-50)', backdropFilter: 'blur(4px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 10000
+        }}>
+          <div className="card animate-fade-in" style={{ width: '90%', maxWidth: '400px', backgroundColor: 'var(--jt-neutral-0)', padding: 'var(--jt-space-7)', borderRadius: 'var(--jt-r-xl)', boxShadow: 'var(--jt-shadow-2xl)' }}>
+            <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
+              <span className="material-symbols-rounded" style={{ fontSize: '3rem', marginBottom: '0.5rem', color: 'var(--jt-seed-color-success)' }}>check_circle</span>
+              <h2 style={{ fontSize: '1.4rem', fontWeight: '800', color: 'var(--jt-color-text)', margin: 0 }}>주문 완료</h2>
+            </div>
+            
+            <div style={{ 
+              backgroundColor: 'var(--jt-neutral-50)', 
+              padding: 'var(--jt-space-5)', 
+              borderRadius: 'var(--jt-r-md)', 
+              marginBottom: '1.5rem' 
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 'var(--jt-space-3)' }}>
+                <span style={{ color: 'var(--jt-color-text-secondary)', fontSize: '0.9rem' }}>총 결제 금액</span>
+                <span style={{ fontWeight: '700', color: 'var(--jt-color-text)', fontSize: '1.1rem' }}>{orderSuccessData.totalPrice.toLocaleString()}원</span>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--jt-space-1)' }}>
+                <span style={{ color: 'var(--jt-color-text-secondary)', fontSize: '0.9rem' }}>입금 계좌</span>
+                <span style={{ fontWeight: '700', color: 'var(--jt-color-text)' }}>신한은행 100-026-244778</span>
+                <span style={{ color: 'var(--jt-color-text)', fontSize: '0.9rem' }}>(주)제니트리</span>
+              </div>
+            </div>
+
+            <p style={{ fontSize: '0.9rem', color: 'var(--jt-color-text-secondary)', marginBottom: '1.5rem', textAlign: 'center', lineHeight: '1.5' }}>
+              입금이 확인되면 상품이 지급됩니다.<br/>주문 내역은 마이페이지에서 확인 가능합니다.
+            </p>
+
+            <button 
+              onClick={() => setOrderSuccessData(null)}
+              style={{
+                width: '100%', padding: 'var(--jt-space-4)', borderRadius: 'var(--jt-r-md)',
+                border: 'none', background: 'var(--jt-color-primary)',
+                color: 'var(--jt-neutral-0)', fontWeight: '700', cursor: 'pointer', fontSize: '1rem'
+              }}
+            >
+              확인
+            </button>
+          </div>
         </div>
       )}
     </div>

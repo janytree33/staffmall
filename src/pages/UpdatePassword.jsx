@@ -20,16 +20,24 @@ export default function UpdatePassword() {
       return;
     }
 
-    if (password.length < 6) {
-      setErrorMsg('비밀번호는 최소 6자 이상이어야 합니다.');
+    if (password.length < 4) {
+      setErrorMsg('비밀번호는 최소 4자 이상이어야 합니다.');
       return;
     }
 
     setLoading(true);
     try {
-      const { error } = await supabase.auth.updateUser({
-        password: password
-      });
+      const storedUser = localStorage.getItem('custom_user');
+      if (!storedUser) {
+        navigate('/login');
+        return;
+      }
+      const user = JSON.parse(storedUser);
+
+      const { error } = await supabase
+        .from('members')
+        .update({ phone_last_4_hashed: password })
+        .eq('id', user.id);
 
       if (error) throw error;
 

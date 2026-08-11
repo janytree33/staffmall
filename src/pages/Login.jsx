@@ -9,23 +9,46 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
+  const maskedPwdDisplay = password.length === 0
+    ? ''
+    : password[0] + '●'.repeat(password.length - 1);
+
+  const handlePwdChange = (e) => {
+    const displayed = e.target.value;
+    const current = maskedPwdDisplay;
+    if (displayed.length > current.length) {
+      const newChar = displayed[displayed.length - 1];
+      setPassword(prev => prev + newChar);
+    } else {
+      setPassword(prev => prev.slice(0, displayed.length));
+    }
+  };
+
   const handleLogin = async (e) => {
     e.preventDefault();
     setErrorMsg('');
     setLoading(true);
 
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
+      const { data, error } = await supabase
+        .from('members')
+        .select('*')
+        .eq('email', email)
+        .eq('phone_last_4_hashed', password)
+        .single();
 
-      if (error) {
-        throw error;
+      if (error || !data) {
+        throw new Error('이메일 또는 비밀번호가 일치하지 않습니다.');
       }
 
+      // 커스텀 로그인 성공: 로컬 스토리지에 유저 정보 저장
+      localStorage.setItem('custom_user', JSON.stringify({
+        id: data.id,
+        email: data.email,
+        name: data.name,
+      }));
+
       // 로그인 성공 시 메인 화면으로 이동
-      // 추후 최초 로그인인 경우 비밀번호 변경 화면으로 리다이렉트하는 로직 추가 가능
       navigate('/');
     } catch (err) {
       console.error(err);
@@ -78,7 +101,7 @@ export default function Login() {
               required
               className="premium-input"
               style={{ height: 'var(--jt-control-height-lg)' }}
-              placeholder="email@address.com"
+              placeholder="info@janytree.com"
             />
           </div>
 
@@ -87,13 +110,17 @@ export default function Login() {
               비밀번호
             </label>
             <input 
-              type="password" 
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              type="text" 
+              value={maskedPwdDisplay}
+              onChange={handlePwdChange}
               required
               className="premium-input"
-              style={{ height: 'var(--jt-control-height-lg)' }}
-              placeholder="********"
+              style={{ 
+                height: 'var(--jt-control-height-lg)', 
+                fontFamily: 'var(--jt-font-num)', 
+                letterSpacing: maskedPwdDisplay.length > 0 ? '0.2rem' : 'normal' 
+              }}
+              placeholder="••••"
             />
           </div>
 

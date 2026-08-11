@@ -152,7 +152,7 @@
   border-collapse: collapse;
   font-size: 0.73rem;
   text-align: center;
-  border: 1.5px solid #1e293b;
+  border: 1.5px solid var(--jt-color-primary);
   background-color: #ffffff;
 }
 
@@ -164,7 +164,7 @@
 }
 
 .price-chart-table th {
-  background-color: var(--jt-neutral-800);
+  background-color: var(--jt-color-primary);
   color: var(--jt-neutral-0);
   font-weight: bold;
 }

@@ -7,7 +7,7 @@
   font-size: 1.5rem;
   font-weight: 800;
   margin-bottom: 1.5rem;
-  color: #0f2d35;
+  color: var(--jt-color-text);
 }
 
 .empty-cart {
@@ -31,16 +31,16 @@
   justify-content: space-between;
   align-items: center;
   padding: 1rem 1.25rem;
-  background: linear-gradient(135deg, rgba(255,255,255,0.95), rgba(240,253,250,0.95));
-  border-radius: 0.75rem;
-  border: 1.5px solid rgba(6, 182, 212, 0.15);
-  box-shadow: 0 2px 8px rgba(6, 182, 212, 0.08);
+  background: var(--jt-neutral-0);
+  border-radius: var(--jt-r-md);
+  border: 1px solid var(--jt-color-border);
+  box-shadow: var(--jt-shadow-sm);
   transition: transform 0.15s, box-shadow 0.15s;
 }
 
 .cart-item:hover {
   transform: translateX(4px);
-  box-shadow: 0 4px 16px rgba(6, 182, 212, 0.15);
+  box-shadow: var(--jt-shadow-md);
 }
 
 .cart-item-info {
@@ -52,7 +52,7 @@
 .item-name {
   font-size: 1rem;
   font-weight: 700;
-  color: #0f2d35;
+  color: var(--jt-color-text);
 }
 
 .item-details {
@@ -60,7 +60,7 @@
   align-items: center;
   gap: 0.75rem;
   font-size: 0.9rem;
-  color: #4b7a85;
+  color: var(--jt-color-text-secondary);
 }
 
 .badge {
@@ -71,9 +71,9 @@
 }
 
 .badge-target {
-  background: linear-gradient(135deg, #d1fae5, #a7f3d0);
-  color: #065f46;
-  border: 1px solid #6ee7b7;
+  background: var(--jt-neutral-100);
+  color: var(--jt-neutral-800);
+  border: 1px solid var(--jt-color-border);
 }
 
 .cart-item-actions {
@@ -85,7 +85,7 @@
 .item-subtotal {
   font-weight: 800;
   font-size: 1.1rem;
-  color: #059669;
+  color: var(--jt-color-text);
 }
 
 .btn-sm {
@@ -97,7 +97,7 @@
 .cart-summary {
   margin-top: 1.5rem;
   padding-top: 1.5rem;
-  border-top: 2px dashed #a5f3fc;
+  border-top: 1px dashed var(--jt-color-border);
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
@@ -114,23 +114,26 @@
 .total-price {
   font-size: 1.75rem;
   font-weight: 800;
-  color: #059669;
+  color: var(--jt-color-primary);
 }
 
-/* 결제 버튼: 노란색 포인트 (참고 사이트의 따뜻한 버튼 느낌) */
+/* 결제 버튼: 차콜 주버튼 */
 .checkout-btn {
   width: 100%;
   padding: 1rem;
   font-size: 1.1rem;
-  background: linear-gradient(135deg, #06b6d4 0%, #059669 100%);
-  color: #ffffff;
+  background-color: var(--jt-color-primary);
+  color: var(--jt-neutral-0);
   font-weight: 800;
   border: none;
-  border-radius: 9999px;
+  border-radius: var(--jt-r-md);
   cursor: pointer;
-  box-shadow: 0 4px 16px rgba(6, 182, 212, 0.4);
+  box-shadow: var(--jt-shadow-md);
   transition: all 0.15s;
   letter-spacing: -0.01em;
+}
+.checkout-btn:hover {
+  background-color: var(--jt-color-primary-hover);
 }
 
 /* 📱 모바일 장바구니 반응형 */

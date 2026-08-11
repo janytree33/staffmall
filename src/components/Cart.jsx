@@ -31,11 +31,13 @@ export default function Cart({ cartItems, onRemoveFromCart, onCheckout, quoteHis
                 <div className="cart-item-actions">
                   <span className="item-subtotal" style={{ fontWeight: 700 }}>{(item.price * item.quantity).toLocaleString()}원</span>
                   <button 
-                    className="premium-btn btn-sm"
-                    style={{ backgroundColor: 'var(--jt-seed-color-error)', color: 'white', padding: '0.2rem 0.6rem', fontSize: '0.8rem', height: 'auto' }}
+                    style={{ background: 'none', border: 'none', padding: '0.2rem', cursor: 'pointer', display: 'flex', alignItems: 'center', transition: 'all 0.15s', opacity: 0.7, color: 'var(--jt-color-text-secondary)' }}
+                    onMouseEnter={(e) => { e.currentTarget.style.opacity = 1; e.currentTarget.style.color = 'var(--jt-seed-color-error)'; e.currentTarget.style.transform = 'scale(1.1)'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.opacity = 0.7; e.currentTarget.style.color = 'var(--jt-color-text-secondary)'; e.currentTarget.style.transform = 'scale(1)'; }}
                     onClick={() => onRemoveFromCart(item.cartItemId)}
+                    title="삭제"
                   >
-                    삭제
+                    <span className="material-symbols-rounded" style={{ fontSize: '22px', fontVariationSettings: "'FILL' 0, 'wght' 400" }}>delete</span>
                   </button>
                 </div>
               </div>
@@ -48,9 +50,9 @@ export default function Cart({ cartItems, onRemoveFromCart, onCheckout, quoteHis
               <span className="total-price" style={{ color: 'var(--jt-color-accent)', fontWeight: 800, fontSize: '1.5rem' }}>{totalPrice.toLocaleString()} 원</span>
             </div>
 
-            <div className="bank-account-info" style={{ margin: '1rem 0', padding: '1rem', backgroundColor: 'rgba(56, 189, 248, 0.1)', borderRadius: '8px', border: '1px solid rgba(56, 189, 248, 0.2)', textAlign: 'center' }}>
-              <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--color-text-muted)' }}>입금 계좌 안내</p>
-              <p style={{ margin: '0.2rem 0 0 0', fontWeight: 'bold', color: 'var(--color-text)' }}>신한은행 100-026-244778 (주)제니트리</p>
+            <div className="bank-account-info" style={{ margin: '1rem 0', padding: '1rem', backgroundColor: 'var(--jt-neutral-50)', borderRadius: 'var(--jt-r-md)', border: '1px solid var(--jt-color-border)', textAlign: 'center' }}>
+              <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--jt-color-text-secondary)' }}>입금 계좌 안내</p>
+              <p style={{ margin: '0.2rem 0 0 0', fontWeight: 'bold', color: 'var(--jt-color-text)' }}>신한은행 100-026-244778 (주)제니트리</p>
             </div>
 
             <button 
@@ -66,8 +68,8 @@ export default function Cart({ cartItems, onRemoveFromCart, onCheckout, quoteHis
 
       {/* 견적 복사 이력 표시 영역 */}
       {quoteHistory && quoteHistory.length > 0 && (
-        <div className="quote-history" style={{ marginTop: '2rem', borderTop: '1px solid var(--color-border)', paddingTop: '1rem' }}>
-          <h3 style={{ fontSize: '1.1rem', marginBottom: '1rem', color: 'var(--color-text)' }}>최근 견적 복사 이력 (클릭 시 재복사)</h3>
+        <div className="quote-history" style={{ marginTop: '2rem', borderTop: '1px solid var(--jt-color-border)', paddingTop: '1rem' }}>
+          <h3 style={{ fontSize: '1.1rem', marginBottom: '1rem', color: 'var(--jt-color-text)' }}>최근 견적 복사 이력 (클릭 시 재복사)</h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
             {quoteHistory.map((historyItem) => (
               <button 

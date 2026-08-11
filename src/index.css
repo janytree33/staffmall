@@ -67,13 +67,12 @@ body {
 
 /* ───────── 카드 ───────── */
 .card {
-  background: #ffffff;
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-md);
-  border: none;
-  border-top: 3px solid #06b6d4;
+  background: var(--jt-neutral-0);
+  border-radius: var(--jt-r-lg);
+  box-shadow: var(--jt-shadow-md);
+  border: 1px solid var(--jt-color-border);
   padding: 1.5rem;
-  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+  transition: transform 0.2s, box-shadow 0.2s;
 }
 
 .card:hover {

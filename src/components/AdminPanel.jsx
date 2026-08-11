@@ -5,6 +5,7 @@ import './AdminPanel.css';
 export default function AdminPanel({ members, products }) {
   // 멤버 추가 폼 상태
   const [newMemberName, setNewMemberName] = useState('');
+  const [newMemberEmail, setNewMemberEmail] = useState('');
   const [newMemberPin, setNewMemberPin] = useState('');
   const [isAddingMember, setIsAddingMember] = useState(false);
 
@@ -20,27 +21,82 @@ export default function AdminPanel({ members, products }) {
   const fileInputRef = useRef(null);
   const [uploadingProductId, setUploadingProductId] = useState(null);
 
+  // ===== [주문 내역 끊김 복구(동기화) 로직] =====
+  const handleRecoverOrders = async () => {
+    if (!window.confirm("혹시 직원분들의 마이페이지에 옛날 주문이 안 보이시나요?\n직원 계정을 새로 만들면서 끊어진 과거 주문 기록들을 '이름' 기준으로 현재 계정에 다시 싹 연결해 드릴까요?")) return;
+    
+    try {
+      alert("주문 기록을 스캔하여 복구 중입니다... 잠시만 기다려주세요.");
+      
+      // 1. 모든 멤버 가져오기
+      const { data: allMembers, error: mErr } = await supabase.from('members').select('*');
+      if (mErr) throw mErr;
+
+      // 2. 모든 주문 가져오기 (기존 멤버 정보 조인)
+      const { data: allOrders, error: oErr } = await supabase.from('orders').select('id, member_id, members(name)');
+      if (oErr) throw oErr;
+
+      let updateCount = 0;
+      
+      // 3. 복구 시작
+      for (let order of allOrders) {
+        if (!order.members || !order.members.name) continue;
+        const orderName = order.members.name;
+        
+        // 해당 이름을 가진 현재 계정들 찾기
+        const matchingMembers = allMembers.filter(m => m.name === orderName);
+        if (matchingMembers.length === 0) continue;
+        
+        // 최우선순위: 이메일이 등록된 계정 -> ID가 높은(가장 최근에 만든) 계정
+        matchingMembers.sort((a, b) => {
+          if (a.email && !b.email) return -1;
+          if (!a.email && b.email) return 1;
+          return b.id - a.id; // 내림차순 정렬
+        });
+        
+        const targetMemberId = matchingMembers[0].id;
+        
+        // 현재 주문의 member_id가 찾아낸 최신 계정의 id와 다르다면 (계정을 지웠다 새로 만든 경우) 업데이트
+        if (order.member_id !== targetMemberId) {
+          const { error: upErr } = await supabase.from('orders').update({ member_id: targetMemberId }).eq('id', order.id);
+          if (!upErr) updateCount++;
+        }
+      }
+      
+      alert(`🎉 마법 복구 완료!\n총 ${updateCount}건의 끊어진 주문을 현재 계정으로 다시 완벽하게 연결했습니다. 마이페이지를 새로고침 해보세요!`);
+    } catch (err) {
+      console.error(err);
+      alert("복구 중 오류가 발생했습니다.");
+    }
+  };
+
   // ===== [멤버 관리 로직] =====
   const handleAddMember = async () => {
-    if (!newMemberName.trim() || !newMemberPin.trim() || newMemberPin.length !== 4) {
-      alert("직원 이름과 비밀번호(초기 4자리)를 정확히 입력해주세요.");
+    if (!newMemberName.trim() || !newMemberEmail.trim() || !newMemberPin.trim()) {
+      alert("직원 이름, 이메일, 초기 비밀번호를 정확히 입력해주세요.");
       return;
     }
+
     setIsAddingMember(true);
-    try {
-      const { error } = await supabase.from('members').insert({
-        name: newMemberName.trim(),
-        phone_last_4_hashed: newMemberPin.trim()
-      });
-      if (error) throw error;
+    const { data, error } = await supabase
+      .from('members')
+      .insert([{ 
+        name: newMemberName.trim(), 
+        email: newMemberEmail.trim(),
+        phone_last_4_hashed: newMemberPin 
+      }])
+      .select();
+
+    if (error) {
+      console.error("멤버 추가 에러:", error);
+      alert("멤버 추가에 실패했습니다. (동일한 이메일이 이미 존재할 수 있습니다.)");
+    } else if (data && data.length > 0) {
+      setMembers([...members, data[0]]);
       setNewMemberName('');
+      setNewMemberEmail('');
       setNewMemberPin('');
-    } catch (e) {
-      console.error(e);
-      alert("직원 추가에 실패했습니다.");
-    } finally {
-      setIsAddingMember(false);
     }
+    setIsAddingMember(false);
   };
 
   const handleDeleteMember = async (id) => {
@@ -149,35 +205,50 @@ export default function AdminPanel({ members, products }) {
   return (
     <div className="admin-panel-container animate-fade-in">
       <div className="admin-header">
-        <h2>⚙️ 제니트리 종합 관리자 설정</h2>
-        <span className="sync-badge">☁️ 실시간 DB 동기화 활성</span>
+        <h2><span className="material-symbols-rounded" style={{ fontSize: '24px', marginRight: '8px', verticalAlign: 'bottom' }}>settings</span> 제니트리 종합 관리자 설정</h2>
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+          <button 
+            className="premium-btn" 
+            onClick={handleRecoverOrders}
+            style={{ backgroundColor: 'var(--jt-color-accent)', color: 'white', padding: '0 1rem', height: '32px', fontSize: '13px' }}
+          >
+            <span className="material-symbols-rounded" style={{ fontSize: '16px', marginRight: '4px', verticalAlign: 'text-bottom' }}>magic_button</span> 끊어진 옛날 주문 복구하기
+          </button>
+          <span className="sync-badge"><span className="material-symbols-rounded" style={{ fontSize: '16px', marginRight: '4px', verticalAlign: 'text-bottom' }}>cloud_sync</span> 실시간 DB 동기화 활성</span>
+        </div>
       </div>
 
       <div className="admin-grid">
         {/* --- [좌측] 멤버 관리 --- */}
         <div className="admin-section">
           <div className="admin-section-header">
-            <h3>👥 직원 명부 관리 ({members.length}명)</h3>
+            <h3><span className="material-symbols-rounded" style={{ fontSize: '20px', marginRight: '6px', verticalAlign: 'text-bottom' }}>group</span> 직원 명부 관리 ({members.length}명)</h3>
           </div>
           
           <div className="input-group">
             <input 
               type="text" 
-              placeholder="직원 성함 (예: 홍길동)" 
+              placeholder="성함 (예: 홍길동)" 
               value={newMemberName} 
               onChange={e => setNewMemberName(e.target.value)}
-              style={{ flex: 1 }}
+              style={{ flex: 1, minWidth: '100px' }}
+            />
+            <input 
+              type="email" 
+              placeholder="이메일 (아이디)" 
+              value={newMemberEmail} 
+              onChange={e => setNewMemberEmail(e.target.value)}
+              style={{ flex: 2, minWidth: '150px' }}
             />
             <input 
               type="text" 
-              placeholder="초기 비번 4자리" 
-              maxLength={4}
+              placeholder="초기 비번" 
               value={newMemberPin} 
               onChange={e => setNewMemberPin(e.target.value)}
-              style={{ width: '130px', flex: 'none' }}
+              style={{ width: '100px', flex: 'none' }}
             />
             <button className="btn-add" onClick={handleAddMember} disabled={isAddingMember}>
-              {isAddingMember ? '추가중' : '추가 👤'}
+              {isAddingMember ? '추가중' : <><span className="material-symbols-rounded" style={{ fontSize: '18px', marginRight: '4px', verticalAlign: 'text-bottom' }}>person_add</span> 추가</>}
             </button>
           </div>
 
@@ -186,7 +257,7 @@ export default function AdminPanel({ members, products }) {
               <div key={m.id} className="list-item">
                 <div className="item-info">
                   <span className="item-name">{m.name}</span>
-                  <span className="item-sub">비밀번호: {m.phone_last_4_hashed}</span>
+                  <span className="item-sub">이메일: {m.email || '미등록'} | 비밀번호: {m.phone_last_4_hashed}</span>
                 </div>
                 <button className="btn-icon btn-delete" onClick={() => handleDeleteMember(m.id)}>
                   ✕
@@ -200,7 +271,7 @@ export default function AdminPanel({ members, products }) {
         {/* --- [우측] 화장품 메뉴판 관리 --- */}
         <div className="admin-section">
           <div className="admin-section-header">
-            <h3>💄 화장품 품목 관리 ({products.length}개)</h3>
+            <h3><span className="material-symbols-rounded" style={{ fontSize: '20px', marginRight: '6px', verticalAlign: 'text-bottom' }}>category</span> 화장품 품목 관리 ({products.length}개)</h3>
           </div>
 
           <div style={{ backgroundColor: '#f8fafc', padding: '1rem', borderRadius: '8px', marginBottom: '1rem', border: '1px dashed #cbd5e1' }}>
@@ -225,7 +296,7 @@ export default function AdminPanel({ members, products }) {
               <input type="number" placeholder="지인단가" value={priceAcq} onChange={e => setPriceAcq(e.target.value)} style={{ gridColumn: '1 / -1' }} />
             </div>
             <button className="btn-add" style={{ width: '100%', padding: '0.8rem', justifyContent: 'center' }} onClick={handleAddProduct} disabled={isAddingProduct}>
-              {isAddingProduct ? '추가중...' : '새로운 화장품 품목 등록하기 🌟'}
+              {isAddingProduct ? '추가중...' : <><span className="material-symbols-rounded" style={{ fontSize: '18px', marginRight: '4px', verticalAlign: 'text-bottom' }}>add_circle</span> 새로운 화장품 품목 등록하기</>}
             </button>
           </div>
 
@@ -248,7 +319,7 @@ export default function AdminPanel({ members, products }) {
 
                 <div className="item-actions">
                   <button className="btn-upload" onClick={() => handleUploadClick(p.id)}>
-                    🖼️ 사진변경
+                    <span className="material-symbols-rounded" style={{ fontSize: '16px', marginRight: '4px', verticalAlign: 'text-bottom' }}>image</span> 사진변경
                   </button>
                   <button className="btn-icon btn-delete" onClick={() => handleDeleteProduct(p.id)}>
                     ✕
@@ -271,7 +342,7 @@ export default function AdminPanel({ members, products }) {
       />
       
       <div style={{ marginTop: '1.5rem', backgroundColor: '#ecfdf5', padding: '1rem', borderRadius: '8px', color: '#065f46', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-        <span>☁️</span> <strong>Supabase 실시간 DB 안내:</strong> 관리자가 위에서 등록/수정/삭제한 데이터는 즉각적으로 Supabase에 반영되며, 모든 사용자의 쇼핑몰 화면이 새로고침 없이 최신 상태로 바뀝니다.
+        <span className="material-symbols-rounded" style={{ fontSize: '20px', color: '#059669' }}>cloud</span> <strong>Supabase 실시간 DB 안내:</strong> 관리자가 위에서 등록/수정/삭제한 데이터는 즉각적으로 Supabase에 반영되며, 모든 사용자의 쇼핑몰 화면이 새로고침 없이 최신 상태로 바뀝니다.
       </div>
     </div>
   );
