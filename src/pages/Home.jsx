@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import ProductList from '../components/ProductList';
 import Cart from '../components/Cart';
 import AdminPanel from '../components/AdminPanel'; // 🚀 새로 만든 관리자 패널
-import Bubbles from '../components/Bubbles'; // 🫧 거품 효과 컴포넌트
+
 import { PURCHASE_LIMITS, TARGET_TYPES } from '../utils/constants';
 import { supabase } from '../supabaseClient'; 
 
@@ -456,7 +456,7 @@ function Home() {
 
   return (
     <>
-    <Bubbles />
+
 
     {/* ⬆️ 맨 위로 플로팅 버튼 - 스크롤이 300px 넘으면 나타남 */}
     <button

@@ -158,51 +158,35 @@
 
 .price-chart-table th,
 .price-chart-table td {
-  border: 1px solid #475569;
+  border: 1px solid var(--jt-color-border);
   padding: 0.35rem 0.2rem;
   vertical-align: middle;
 }
 
 .price-chart-table th {
-  background: linear-gradient(135deg, #059669, #06b6d4);
-  color: #ffffff;
+  background-color: var(--jt-neutral-800);
+  color: var(--jt-neutral-0);
   font-weight: bold;
 }
 
-.price-chart-table th.th-self {
-  color: #facc15; /* yellow */
-}
-
-.price-chart-table th.th-family {
-  color: #22d3ee; /* cyan */
-}
-
+.price-chart-table th.th-self,
+.price-chart-table th.th-family,
 .price-chart-table th.th-acquaintance {
-  color: #f472b6; /* pink */
+  color: var(--jt-neutral-100);
 }
 
 .price-chart-table td.brand-cell {
   font-weight: bold;
-  background-color: #f8fafc;
-  color: #0f172a;
+  background-color: var(--jt-neutral-100);
+  color: var(--jt-color-text);
 }
 
-.price-chart-table td.cell-self {
-  background-color: #fefde8; /* light yellow */
-  font-weight: 600;
-  color: #1e293b;
-}
-
-.price-chart-table td.cell-family {
-  background-color: #ecfeff; /* light cyan */
-  font-weight: 600;
-  color: #1e293b;
-}
-
+.price-chart-table td.cell-self,
+.price-chart-table td.cell-family,
 .price-chart-table td.cell-acquaintance {
-  background-color: #fff1f2; /* light pink */
+  background-color: var(--jt-bg-elevated);
   font-weight: 600;
-  color: #1e293b;
+  color: var(--jt-color-text);
 }
 
 .price-chart-notes {
@@ -213,9 +197,9 @@
   gap: 0.25rem;
   font-size: 0.72rem;
   font-weight: bold;
-  background: linear-gradient(135deg, #059669, #06b6d4);
-  border-radius: 6px;
+  background-color: var(--jt-neutral-100);
+  border-radius: var(--jt-r-md);
   border: none;
-  color: #ffffff;
+  color: var(--jt-neutral-700);
 }
 

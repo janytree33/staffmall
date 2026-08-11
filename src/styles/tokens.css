@@ -106,6 +106,7 @@
   color: var(--jt-neutral-0);
   border: none;
   border-radius: var(--jt-r-md);
+  padding: 0 var(--jt-space-5); /* 여백 추가 */
   font-weight: 700;
   cursor: pointer;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);

@@ -251,18 +251,14 @@ export default function ProductList({ products = [], onAddToCart, onBatchAddToCa
       </div>
 
       <div 
-        className="product-list-summary card" 
+        className="product-list-summary premium-card" 
         style={{ 
           marginTop: '2rem', 
-          padding: '1.5rem', 
-          backgroundColor: '#fdfbff', 
-          border: '1px solid #e9d5ff', 
-          borderRadius: '12px', 
+          padding: 'var(--jt-space-6)', 
           display: 'flex', 
           flexDirection: 'column', 
           alignItems: 'center', 
           gap: '1rem', 
-          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' 
         }}
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', maxWidth: '500px', fontSize: '1.1rem', fontWeight: 'bold' }}>
@@ -271,17 +267,15 @@ export default function ProductList({ products = [], onAddToCart, onBatchAddToCa
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', maxWidth: '500px', fontSize: '1.4rem', fontWeight: 'bold' }}>
           <span>실시간 예상 합계:</span>
-          <span className="text-gradient" style={{ fontSize: '1.6rem' }}>{selectedTotal.toLocaleString()}원</span>
+          <span style={{ fontSize: '1.6rem', color: 'var(--jt-color-accent)' }}>{selectedTotal.toLocaleString()}원</span>
         </div>
         <button 
-          className="btn btn-primary" 
+          className="premium-btn" 
           style={{ 
             width: '100%', 
             maxWidth: '500px', 
-            padding: '0.9rem 1.5rem', 
+            height: 'var(--jt-control-height-lg)', 
             fontSize: '1.1rem', 
-            fontWeight: 'bold', 
-            borderRadius: '8px' 
           }} 
           onClick={() => {
             const itemsToAdd = products.filter(p => selections[p.id] && selections[p.id].quantity > 0).map(p => ({ product: p, targetType: selections[p.id].targetType, quantity: selections[p.id].quantity }));
