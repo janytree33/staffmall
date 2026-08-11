@@ -1,7 +1,6 @@
 /* ───────── 장바구니 컨테이너 ───────── */
 .cart-container {
   margin-bottom: 3rem;
-  border-top: 4px solid #34d399; /* ☀️ C버전 에메랄드 */
 }
 
 .cart-container h2 {
@@ -14,10 +13,10 @@
 .empty-cart {
   text-align: center;
   padding: 3rem 1rem;
-  color: #2d7a5a;
-  background: linear-gradient(135deg, #f0fdf4, #ecfdf5);
-  border-radius: 1rem;
-  border: 1.5px dashed #6ee7b7;
+  color: var(--jt-color-text-tertiary);
+  background-color: var(--jt-bg-layout);
+  border-radius: var(--jt-r-md);
+  border: 1px dashed var(--jt-color-border);
 }
 
 .cart-items-list {

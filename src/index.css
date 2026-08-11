@@ -53,7 +53,7 @@ body {
 
 /* ───────── 컨테이너 ───────── */
 .container {
-  max-width: 1200px;
+  max-width: 1440px;
   margin: 0 auto;
   padding: 2rem;
 }
@@ -206,13 +206,13 @@ body {
 .header-title-container {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: 1.5rem;
   flex: 1;
 }
 
 .header-logo {
-  height: 44px; /* 높이를 적절히 키움 */
-  width: auto;  /* 비율 유지 */
+  height: 52px;
+  width: auto;
   object-fit: contain;
   background-color: transparent;
 }
