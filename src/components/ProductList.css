@@ -55,7 +55,7 @@
 .option-group label {
   font-size: 0.85rem;
   font-weight: 600;
-  color: var(--color-text-muted);
+  color: var(--jt-color-text-secondary);
 }
 
 .price-display {
@@ -122,20 +122,20 @@
 /* 단가표 카드 및 테이블 스타일 */
 .price-chart-card {
   padding: 1rem;
-  background-color: var(--color-bg-secondary);
-  border: 1.5px solid var(--color-border);
-  border-radius: var(--radius-lg);
+  background-color: var(--jt-bg-container);
+  border-radius: var(--jt-r-lg);
+  border: 1px solid var(--jt-color-border);
   display: flex;
   flex-direction: column;
   height: 100%;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+  box-shadow: var(--jt-shadow-sm);
 }
 
 .price-chart-card h3 {
   font-size: 1.1rem;
-  font-weight: 700;
+  font-weight: 800;
   margin-bottom: 0.75rem;
-  color: var(--color-primary);
+  color: var(--jt-color-text);
   text-align: center;
   border-bottom: none;
   padding-bottom: 0;

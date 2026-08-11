@@ -144,19 +144,19 @@ body {
 /* ───────── 입력 필드 ───────── */
 .select-input, .number-input {
   padding: 0.55rem 0.75rem;
-  border: 1.5px solid #6ee7b7;
-  border-radius: var(--radius-md);
+  border: 1px solid var(--jt-color-border);
+  border-radius: var(--jt-r-md);
   font-family: inherit;
   font-size: 0.95rem;
-  color: var(--color-text-main);
-  background-color: rgba(255, 255, 255, 0.95);
+  color: var(--jt-color-text);
+  background-color: var(--jt-bg-container);
   outline: none;
-  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+  transition: all 0.2s ease;
 }
 
 .select-input:focus, .number-input:focus {
-  border-color: #06b6d4;
-  box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.15);
+  border-color: var(--jt-color-focus-ring);
+  box-shadow: 0 0 0 3px rgba(48, 92, 222, 0.15); /* Info Blue Glow */
 }
 
 /* ───────── 관리자/주문 패널 모바일 개선 ───────── */
