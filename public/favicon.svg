@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <defs>
+    <radialGradient id="tropicalFavGrad" cx="35%" cy="30%" r="75%">
+      <stop offset="0%" stop-color="#34d399" />
+      <stop offset="100%" stop-color="#06b6d4" />
+    </radialGradient>
+  </defs>
+  <circle cx="16" cy="16" r="15" fill="url(#tropicalFavGrad)" stroke="#6ee7b7" stroke-width="0.5"/>
+  <text x="14" y="22" font-family="'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="18" font-weight="900" fill="#ffffff" text-anchor="middle">j</text>
+  <text x="23" y="15" font-family="'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="13" font-weight="900" fill="#ffffff" text-anchor="middle">+</text>
+</svg>

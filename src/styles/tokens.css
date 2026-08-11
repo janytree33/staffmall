@@ -1,0 +1,90 @@
+/* 
+  JT 디자인 시스템 토큰 (v3.0) 
+  새로 추가되는 화면(Login, MyPage 등)에서 사용합니다. 
+*/
+:root {
+  /* ── 1. Seed Token ── */
+  --jt-seed-color-primary: #1F2328;
+  --jt-seed-color-neutral: #1F2328;
+  --jt-seed-color-accent:  #305CDE;
+  --jt-seed-color-success: #14A870;
+  --jt-seed-color-warning: #F0B01C;
+  --jt-seed-color-error:   #E14B4B;
+  --jt-seed-color-info:    #305CDE;
+  
+  --jt-seed-font-size: 14px;
+  --jt-seed-radius:    8px;
+  --jt-seed-unit:      4px;
+
+  /* ── 2. 중립(Neutral) 계단 ── */
+  --jt-neutral-0:   #FFFFFF;
+  --jt-neutral-50:  #F7F8F9;
+  --jt-neutral-100: #EEF0F2;
+  --jt-neutral-200: #DEE2E6;
+  --jt-neutral-300: #C5CBD1;
+  --jt-neutral-400: #9DA5AF;
+  --jt-neutral-500: #757F8A;
+  --jt-neutral-600: #5A6470;
+  --jt-neutral-700: #434B55;
+  --jt-neutral-800: #2E343B;
+  --jt-neutral-900: #1F2328;
+  --jt-neutral-950: #14171A;
+
+  /* ── 3. 색상 팔레트 파생 ── */
+  /* Primary (Charcoal) */
+  --jt-color-primary-bg:     var(--jt-neutral-100);
+  --jt-color-primary-border: var(--jt-neutral-200);
+  --jt-color-primary-hover:  var(--jt-neutral-800);
+  --jt-color-primary:        var(--jt-neutral-900);
+  --jt-color-primary-active: var(--jt-neutral-950);
+  --jt-color-primary-text:   var(--jt-neutral-900);
+
+  /* Accent (Info Blue) */
+  --jt-color-accent-bg:     #EEF3FE;
+  --jt-color-accent-border: #D6E1FC;
+  --jt-color-accent-hover:  #5578E8;
+  --jt-color-accent:        #305CDE;
+  --jt-color-accent-active: #2A4EC0;
+  --jt-color-accent-text:   #24419E;
+
+  /* ── 4. 스케일 (간격, 라운드, 높이) ── */
+  --jt-space-1:  4px;
+  --jt-space-2:  8px;
+  --jt-space-3:  12px;
+  --jt-space-4:  16px;
+  --jt-space-5:  20px;
+  --jt-space-6:  24px;
+  --jt-space-7:  32px;
+  --jt-space-8:  40px;
+
+  --jt-r-sm:   4px;
+  --jt-r-md:   8px;
+  --jt-r-lg:   16px;
+  --jt-r-xl:   24px;
+  --jt-r-full: 9999px;
+
+  --jt-control-height:    36px;
+  --jt-control-height-sm: 28px;
+  --jt-control-height-lg: 44px;
+
+  --jt-shadow-xs: 0 4px 12px rgba(18,21,26,.08);
+  --jt-shadow-sm: 0 4px 16px rgba(18,21,26,.06);
+  --jt-shadow-lg: 0 20px 40px rgba(18,21,26,.15);
+
+  /* ── 5. Alias Token (개발용 이름) ── */
+  --jt-color-text:           var(--jt-neutral-900);
+  --jt-color-text-secondary: var(--jt-neutral-500);
+  --jt-color-text-tertiary:  var(--jt-neutral-400);
+  --jt-color-text-disabled:  var(--jt-neutral-300);
+
+  --jt-bg-layout:            var(--jt-neutral-50);
+  --jt-bg-container:         var(--jt-neutral-0);
+  --jt-bg-elevated:          var(--jt-neutral-0);
+
+  --jt-color-border:         var(--jt-neutral-200);
+  --jt-color-split:          var(--jt-neutral-100);
+
+  --jt-color-link:           var(--jt-color-accent);
+  --jt-color-link-hover:     var(--jt-color-accent-hover);
+  --jt-color-focus-ring:     var(--jt-color-accent);
+}

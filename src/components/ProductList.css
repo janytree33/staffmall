@@ -1,0 +1,220 @@
+.product-list-container {
+  margin-bottom: 3rem;
+}
+
+.product-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+/* 📱 모바일: 1열 세로 정렬 */
+@media (max-width: 768px) {
+  .product-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+}
+
+/* 태블릿: 2열 */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .product-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.product-card {
+  display: flex;
+  flex-direction: column;
+}
+
+.product-card h3 {
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+  color: #065f46;
+  border-bottom: 1.5px solid #6ee7b7;
+  padding-bottom: 0.5rem;
+}
+
+.product-options {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.option-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.option-group label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
+.price-display {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: var(--color-background);
+  padding: 0.75rem;
+  border-radius: var(--radius-md);
+  margin-top: 0.5rem;
+}
+
+.price-label {
+  font-size: 0.9rem;
+  color: var(--color-text-muted);
+}
+
+.price-value {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--color-primary-hover);
+}
+
+.quantity-controls {
+  display: flex;
+  align-items: center;
+}
+
+.qty-btn {
+  background-color: var(--color-border);
+  border: none;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 0.25rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color var(--transition-fast);
+}
+
+.qty-btn:hover:not(:disabled) {
+  background-color: #cbd5e1;
+}
+
+.qty-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.qty-input {
+  width: 3.5rem;
+  text-align: center;
+  border-radius: 0;
+  border-left: none;
+  border-right: none;
+  height: 2rem;
+  padding: 0;
+}
+
+.add-to-cart-btn {
+  width: 100%;
+}
+
+/* 단가표 카드 및 테이블 스타일 */
+.price-chart-card {
+  padding: 1rem;
+  background-color: var(--color-bg-secondary);
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+}
+
+.price-chart-card h3 {
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin-bottom: 0.75rem;
+  color: var(--color-primary);
+  text-align: center;
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.price-chart-table-container {
+  overflow-x: auto;
+  flex-grow: 1;
+  border-radius: 6px;
+}
+
+.price-chart-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.73rem;
+  text-align: center;
+  border: 1.5px solid #1e293b;
+  background-color: #ffffff;
+}
+
+.price-chart-table th,
+.price-chart-table td {
+  border: 1px solid #475569;
+  padding: 0.35rem 0.2rem;
+  vertical-align: middle;
+}
+
+.price-chart-table th {
+  background: linear-gradient(135deg, #059669, #06b6d4);
+  color: #ffffff;
+  font-weight: bold;
+}
+
+.price-chart-table th.th-self {
+  color: #facc15; /* yellow */
+}
+
+.price-chart-table th.th-family {
+  color: #22d3ee; /* cyan */
+}
+
+.price-chart-table th.th-acquaintance {
+  color: #f472b6; /* pink */
+}
+
+.price-chart-table td.brand-cell {
+  font-weight: bold;
+  background-color: #f8fafc;
+  color: #0f172a;
+}
+
+.price-chart-table td.cell-self {
+  background-color: #fefde8; /* light yellow */
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.price-chart-table td.cell-family {
+  background-color: #ecfeff; /* light cyan */
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.price-chart-table td.cell-acquaintance {
+  background-color: #fff1f2; /* light pink */
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.price-chart-notes {
+  margin-top: auto;
+  padding: 0.6rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.72rem;
+  font-weight: bold;
+  background: linear-gradient(135deg, #059669, #06b6d4);
+  border-radius: 6px;
+  border: none;
+  color: #ffffff;
+}
+
