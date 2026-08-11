@@ -56,26 +56,29 @@ export default function UpdatePassword() {
       padding: 'var(--jt-space-4)',
       fontFamily: 'var(--jt-seed-font-base)'
     }}>
-      <div style={{
-        backgroundColor: 'var(--jt-bg-container)',
-        padding: 'var(--jt-space-7)',
-        borderRadius: 'var(--jt-r-lg)',
-        boxShadow: 'var(--jt-shadow-md)',
+      <div className="premium-card" style={{
+        padding: 'var(--jt-space-8) var(--jt-space-6)',
         width: '100%',
-        maxWidth: '400px',
-        borderTop: '4px solid var(--jt-color-accent)',
-        overflow: 'hidden'
+        maxWidth: '420px',
       }}>
-        <div style={{ textAlign: 'center', marginBottom: 'var(--jt-space-6)' }}>
-          <h2 style={{ color: 'var(--jt-color-text)', margin: 0, fontWeight: 700 }}>🔒 비밀번호 변경</h2>
-          <p style={{ color: 'var(--jt-color-text-secondary)', fontSize: '13px', marginTop: 'var(--jt-space-2)' }}>
+        <div style={{ textAlign: 'center', marginBottom: 'var(--jt-space-7)' }}>
+          <h2 style={{ 
+            color: 'var(--jt-color-text)', 
+            margin: 0, 
+            fontWeight: 800,
+            fontSize: '22px',
+            letterSpacing: '-0.5px'
+          }}>
+            🔒 비밀번호 변경
+          </h2>
+          <p style={{ color: 'var(--jt-color-text-secondary)', fontSize: '14px', marginTop: 'var(--jt-space-3)' }}>
             안전을 위해 자신만의 새로운 비밀번호로 변경해주세요.
           </p>
         </div>
 
-        <form onSubmit={handleUpdate} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--jt-space-4)' }}>
+        <form onSubmit={handleUpdate} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--jt-space-5)' }}>
           <div>
-            <label style={{ display: 'block', color: 'var(--jt-color-text)', fontWeight: 600, marginBottom: 'var(--jt-space-2)', fontSize: '13px' }}>
+            <label style={{ display: 'block', color: 'var(--jt-color-text)', fontWeight: 600, marginBottom: 'var(--jt-space-2)', fontSize: '14px' }}>
               새 비밀번호
             </label>
             <input 
@@ -83,22 +86,14 @@ export default function UpdatePassword() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              style={{
-                width: '100%',
-                height: 'var(--jt-control-height)',
-                padding: '0 var(--jt-space-3)',
-                border: '1px solid var(--jt-color-border)',
-                borderRadius: 'var(--jt-r-md)',
-                outline: 'none',
-                transition: 'border-color 0.2s'
-              }}
-              onFocus={(e) => e.target.style.borderColor = 'var(--jt-color-focus-ring)'}
-              onBlur={(e) => e.target.style.borderColor = 'var(--jt-color-border)'}
+              className="premium-input"
+              style={{ height: 'var(--jt-control-height-lg)' }}
+              placeholder="********"
             />
           </div>
 
           <div>
-            <label style={{ display: 'block', color: 'var(--jt-color-text)', fontWeight: 600, marginBottom: 'var(--jt-space-2)', fontSize: '13px' }}>
+            <label style={{ display: 'block', color: 'var(--jt-color-text)', fontWeight: 600, marginBottom: 'var(--jt-space-2)', fontSize: '14px' }}>
               새 비밀번호 확인
             </label>
             <input 
@@ -106,23 +101,15 @@ export default function UpdatePassword() {
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               required
-              style={{
-                width: '100%',
-                height: 'var(--jt-control-height)',
-                padding: '0 var(--jt-space-3)',
-                border: '1px solid var(--jt-color-border)',
-                borderRadius: 'var(--jt-r-md)',
-                outline: 'none',
-                transition: 'border-color 0.2s'
-              }}
-              onFocus={(e) => e.target.style.borderColor = 'var(--jt-color-focus-ring)'}
-              onBlur={(e) => e.target.style.borderColor = 'var(--jt-color-border)'}
+              className="premium-input"
+              style={{ height: 'var(--jt-control-height-lg)' }}
+              placeholder="********"
             />
           </div>
 
           {errorMsg && (
             <div style={{
-              color: 'var(--jt-seed-color-error)', fontSize: '13px', textAlign: 'center', backgroundColor: '#FEF2F2', padding: 'var(--jt-space-2)', borderRadius: 'var(--jt-r-sm)'
+              color: 'var(--jt-seed-color-error)', fontSize: '13px', textAlign: 'center', backgroundColor: '#FEF2F2', padding: 'var(--jt-space-3)', borderRadius: 'var(--jt-r-sm)', fontWeight: 600
             }}>
               {errorMsg}
             </div>
@@ -130,7 +117,7 @@ export default function UpdatePassword() {
 
           {successMsg && (
             <div style={{
-              color: 'var(--jt-seed-color-success)', fontSize: '13px', textAlign: 'center', backgroundColor: '#F0FDF4', padding: 'var(--jt-space-2)', borderRadius: 'var(--jt-r-sm)'
+              color: 'var(--jt-seed-color-success)', fontSize: '13px', textAlign: 'center', backgroundColor: '#F0FDF4', padding: 'var(--jt-space-3)', borderRadius: 'var(--jt-r-sm)', fontWeight: 600
             }}>
               {successMsg}
             </div>
@@ -139,16 +126,10 @@ export default function UpdatePassword() {
           <button 
             type="submit" 
             disabled={loading || successMsg !== ''}
+            className="premium-btn"
             style={{
               height: 'var(--jt-control-height-lg)',
-              backgroundColor: 'var(--jt-color-primary)',
-              color: 'var(--jt-neutral-0)',
-              border: 'none',
-              borderRadius: 'var(--jt-r-md)',
-              fontWeight: 700,
-              cursor: (loading || successMsg) ? 'not-allowed' : 'pointer',
-              marginTop: 'var(--jt-space-2)',
-              transition: 'background-color 0.2s'
+              marginTop: 'var(--jt-space-3)'
             }}
           >
             {loading ? '변경 중...' : '비밀번호 변경하기'}

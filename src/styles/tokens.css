@@ -88,3 +88,59 @@
   --jt-color-link-hover:     var(--jt-color-accent-hover);
   --jt-color-focus-ring:     var(--jt-color-accent);
 }
+
+/* ── 6. 공통 유틸리티 (Premium UI) ── */
+.premium-card {
+  background-color: var(--jt-bg-container);
+  border-radius: var(--jt-r-lg);
+  box-shadow: var(--jt-shadow-lg); /* 좀 더 깊이감 있는 부드러운 그림자 */
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+.premium-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 24px 48px rgba(18,21,26,.18); /* 마우스 올렸을 때 살짝 떠오르는 효과 */
+}
+
+.premium-btn {
+  background-color: var(--jt-color-primary);
+  color: var(--jt-neutral-0);
+  border: none;
+  border-radius: var(--jt-r-md);
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+.premium-btn:hover:not(:disabled) {
+  background-color: var(--jt-color-primary-hover);
+  transform: translateY(-1px);
+  box-shadow: var(--jt-shadow-sm);
+}
+.premium-btn:active:not(:disabled) {
+  transform: translateY(1px);
+  box-shadow: none;
+}
+.premium-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.premium-input {
+  width: 100%;
+  padding: 0 var(--jt-space-4);
+  border: 1px solid var(--jt-color-border);
+  border-radius: var(--jt-r-md);
+  outline: none;
+  transition: all 0.3s ease;
+  background-color: var(--jt-neutral-50);
+}
+.premium-input:hover {
+  border-color: var(--jt-neutral-400);
+}
+.premium-input:focus {
+  border-color: var(--jt-color-focus-ring);
+  box-shadow: 0 0 0 3px rgba(48, 92, 222, 0.15); /* Info Blue Glow */
+  background-color: var(--jt-bg-container);
+}

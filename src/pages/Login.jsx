@@ -45,96 +45,63 @@ export default function Login() {
       padding: 'var(--jt-space-4)',
       fontFamily: 'var(--jt-seed-font-base)'
     }}>
-      <div style={{
-        backgroundColor: 'var(--jt-bg-container)',
-        padding: 'var(--jt-space-7)',
-        borderRadius: 'var(--jt-r-lg)',
-        boxShadow: 'var(--jt-shadow-md)',
+      <div className="premium-card" style={{
+        padding: 'var(--jt-space-8) var(--jt-space-6)',
         width: '100%',
-        maxWidth: '400px',
-        borderTop: '4px solid var(--jt-color-primary)',
-        overflow: 'hidden'
+        maxWidth: '420px',
       }}>
-        <div style={{ textAlign: 'center', marginBottom: 'var(--jt-space-6)' }}>
-          <img src="/logo/logo-h.svg" alt="제니트리 로고" style={{ height: '32px', marginBottom: 'var(--jt-space-4)' }} />
+        <div style={{ textAlign: 'center', marginBottom: 'var(--jt-space-7)' }}>
+          <img src="/logo/logo-h.svg" alt="제니트리 로고" style={{ height: '36px', marginBottom: 'var(--jt-space-5)' }} />
           <h2 style={{ 
             color: 'var(--jt-color-text)', 
             margin: 0, 
-            fontSize: 'var(--jt-seed-font-size)',
-            fontWeight: 700 
-          }}>임직원 복지몰 로그인</h2>
-          <p style={{ 
-            color: 'var(--jt-color-text-secondary)', 
-            fontSize: '13px', 
-            marginTop: 'var(--jt-space-2)' 
+            fontWeight: 800,
+            fontSize: '22px',
+            letterSpacing: '-0.5px'
           }}>
+            임직원 복지몰 로그인
+          </h2>
+          <p style={{ color: 'var(--jt-color-text-secondary)', fontSize: '14px', marginTop: 'var(--jt-space-3)' }}>
             관리자가 부여한 계정으로 로그인해주세요.
           </p>
         </div>
 
-        <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--jt-space-4)' }}>
+        <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--jt-space-5)' }}>
           <div>
-            <label style={{ 
-              display: 'block', 
-              color: 'var(--jt-color-text)', 
-              fontWeight: 600, 
-              marginBottom: 'var(--jt-space-2)',
-              fontSize: '13px'
-            }}>이메일</label>
+            <label style={{ display: 'block', color: 'var(--jt-color-text)', fontWeight: 600, marginBottom: 'var(--jt-space-2)', fontSize: '14px' }}>
+              이메일
+            </label>
             <input 
               type="email" 
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
-              style={{
-                width: '100%',
-                height: 'var(--jt-control-height)',
-                padding: '0 var(--jt-space-3)',
-                border: '1px solid var(--jt-color-border)',
-                borderRadius: 'var(--jt-r-md)',
-                outline: 'none',
-                transition: 'border-color 0.2s'
-              }}
-              onFocus={(e) => e.target.style.borderColor = 'var(--jt-color-focus-ring)'}
-              onBlur={(e) => e.target.style.borderColor = 'var(--jt-color-border)'}
+              className="premium-input"
+              style={{ height: 'var(--jt-control-height-lg)' }}
+              placeholder="email@address.com"
             />
           </div>
 
           <div>
-            <label style={{ 
-              display: 'block', 
-              color: 'var(--jt-color-text)', 
-              fontWeight: 600, 
-              marginBottom: 'var(--jt-space-2)',
-              fontSize: '13px'
-            }}>비밀번호</label>
+            <label style={{ display: 'block', color: 'var(--jt-color-text)', fontWeight: 600, marginBottom: 'var(--jt-space-2)', fontSize: '14px' }}>
+              비밀번호
+            </label>
             <input 
               type="password" 
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              style={{
-                width: '100%',
-                height: 'var(--jt-control-height)',
-                padding: '0 var(--jt-space-3)',
-                border: '1px solid var(--jt-color-border)',
-                borderRadius: 'var(--jt-r-md)',
-                outline: 'none',
-                transition: 'border-color 0.2s'
-              }}
-              onFocus={(e) => e.target.style.borderColor = 'var(--jt-color-focus-ring)'}
-              onBlur={(e) => e.target.style.borderColor = 'var(--jt-color-border)'}
+              className="premium-input"
+              style={{ height: 'var(--jt-control-height-lg)' }}
+              placeholder="********"
             />
           </div>
 
           {errorMsg && (
             <div style={{
-              color: 'var(--jt-seed-color-error)',
-              fontSize: '13px',
-              textAlign: 'center',
-              backgroundColor: '#FEF2F2',
-              padding: 'var(--jt-space-2)',
-              borderRadius: 'var(--jt-r-sm)'
+              color: 'var(--jt-seed-color-error)', fontSize: '13px', textAlign: 'center', 
+              backgroundColor: '#FEF2F2', padding: 'var(--jt-space-3)', borderRadius: 'var(--jt-r-sm)',
+              fontWeight: 600
             }}>
               {errorMsg}
             </div>
@@ -143,19 +110,11 @@ export default function Login() {
           <button 
             type="submit" 
             disabled={loading}
+            className="premium-btn"
             style={{
               height: 'var(--jt-control-height-lg)',
-              backgroundColor: 'var(--jt-color-primary)',
-              color: 'var(--jt-neutral-0)',
-              border: 'none',
-              borderRadius: 'var(--jt-r-md)',
-              fontWeight: 700,
-              cursor: loading ? 'not-allowed' : 'pointer',
-              marginTop: 'var(--jt-space-2)',
-              transition: 'background-color 0.2s'
+              marginTop: 'var(--jt-space-3)'
             }}
-            onMouseOver={(e) => e.target.style.backgroundColor = 'var(--jt-color-primary-hover)'}
-            onMouseOut={(e) => e.target.style.backgroundColor = 'var(--jt-color-primary)'}
           >
             {loading ? '로그인 중...' : '로그인'}
           </button>

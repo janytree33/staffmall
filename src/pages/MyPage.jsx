@@ -111,32 +111,28 @@ export default function MyPage() {
         </div>
 
         {/* 내 정보 카드 */}
-        <div style={{
-          backgroundColor: 'var(--jt-bg-container)',
+        <div className="premium-card" style={{
           padding: 'var(--jt-space-6)',
-          borderRadius: 'var(--jt-r-lg)',
-          boxShadow: 'var(--jt-shadow-sm)',
           marginBottom: 'var(--jt-space-6)'
         }}>
-          <h2 style={{ fontSize: '18px', margin: '0 0 var(--jt-space-4) 0', color: 'var(--jt-color-text)' }}>👤 로그인 정보</h2>
+          <h2 style={{ fontSize: '18px', margin: '0 0 var(--jt-space-5) 0', color: 'var(--jt-color-text)', fontWeight: 800 }}>👤 로그인 정보</h2>
           
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--jt-space-3)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--jt-color-split)', paddingBottom: 'var(--jt-space-2)' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--jt-space-4)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'var(--jt-neutral-50)', padding: 'var(--jt-space-4)', borderRadius: 'var(--jt-r-md)' }}>
               <span style={{ color: 'var(--jt-color-text-secondary)', fontWeight: 600 }}>이메일 계정</span>
-              <span style={{ color: 'var(--jt-color-text)', fontWeight: 700 }}>{user?.email}</span>
+              <span style={{ color: 'var(--jt-color-text)', fontWeight: 700, fontSize: '16px' }}>{user?.email}</span>
             </div>
             
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 'var(--jt-space-2)' }}>
               <button 
+                className="premium-btn"
                 onClick={() => navigate('/update-password')}
                 style={{
-                  padding: 'var(--jt-space-2) var(--jt-space-4)',
-                  backgroundColor: 'var(--jt-bg-layout)',
+                  padding: '0 var(--jt-space-5)',
+                  height: 'var(--jt-control-height)',
+                  backgroundColor: 'var(--jt-neutral-100)',
+                  color: 'var(--jt-neutral-700)',
                   border: '1px solid var(--jt-color-border)',
-                  borderRadius: 'var(--jt-r-md)',
-                  cursor: 'pointer',
-                  fontWeight: 600,
-                  color: 'var(--jt-color-text)'
                 }}
               >
                 비밀번호 변경
@@ -146,13 +142,10 @@ export default function MyPage() {
         </div>
 
         {/* 내 주문 내역 컨테이너 */}
-        <div style={{
-          backgroundColor: 'var(--jt-bg-container)',
-          padding: 'var(--jt-space-6)',
-          borderRadius: 'var(--jt-r-lg)',
-          boxShadow: 'var(--jt-shadow-sm)',
+        <div className="premium-card" style={{
+          padding: 'var(--jt-space-6)'
         }}>
-          <h2 style={{ fontSize: '18px', margin: '0 0 var(--jt-space-4) 0', color: 'var(--jt-color-text)' }}>📦 내 주문 내역</h2>
+          <h2 style={{ fontSize: '18px', margin: '0 0 var(--jt-space-5) 0', color: 'var(--jt-color-text)', fontWeight: 800 }}>📦 내 주문 내역</h2>
           
           {loadingOrders ? (
             <div style={{ padding: 'var(--jt-space-6) 0', textAlign: 'center', color: 'var(--jt-color-text-tertiary)' }}>
