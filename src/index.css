@@ -203,13 +203,6 @@ body {
   gap: 1rem;
 }
 
-.header-title-container {
-  display: flex;
-  align-items: center;
-  justify-content: center; /* 중앙 정렬 추가 */
-  gap: 1.5rem;
-  flex: 1;
-}
 
 .header-logo {
   height: 32px;

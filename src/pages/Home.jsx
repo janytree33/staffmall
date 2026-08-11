@@ -493,22 +493,24 @@ function Home() {
       <header style={{ marginBottom: '2.5rem', textAlign: 'center', width: '100%' }}>
         {/* 참고 사이트처럼 헤더 전체를 밝고 반투명한 카드형 배너로 */}
         <div className="header-card premium-card" style={{ padding: 'var(--jt-space-6) var(--jt-space-7)' }}>
-          {/* 로고 & 타이틀 */}
-          <div className="header-title-container">
+          {/* 1. 좌측 로고 영역 */}
+          <div className="header-logo-container" style={{ flex: '0 0 auto' }}>
             <img 
               src="/logo/logo-h.svg" 
               alt="제니트리 로고" 
               className="header-logo"
             />
-            <div className="header-text-container" style={{ textAlign: 'left' }}>
-              <h1 className="header-title">
-                제니트리 임직원 전용 화장품 복지몰
-              </h1>
-              <p className="header-subtitle" style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                <span className="material-symbols-rounded" style={{ fontSize: '1.2rem', color: 'var(--jt-color-success)' }}>spa</span>
-                특별한 혜택으로 화장품을 만나보세요. (본인 / 가족 / 지인 할인 적용)
-              </p>
-            </div>
+          </div>
+
+          {/* 2. 중앙 텍스트 영역 */}
+          <div className="header-text-container" style={{ flex: 1, textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            <h1 className="header-title">
+              제니트리 임직원 전용 화장품 복지몰
+            </h1>
+            <p className="header-subtitle" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.25rem' }}>
+              <span className="material-symbols-rounded" style={{ fontSize: '1.2rem', color: 'var(--jt-color-success)' }}>spa</span>
+              특별한 혜택으로 화장품을 만나보세요. (본인 / 가족 / 지인 할인 적용)
+            </p>
           </div>
 
           {/* 우측 관리 버튼 영역 */}
