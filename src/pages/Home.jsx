@@ -494,7 +494,7 @@ function Home() {
         {/* 참고 사이트처럼 헤더 전체를 밝고 반투명한 카드형 배너로 */}
         <div className="header-card premium-card" style={{ padding: 'var(--jt-space-6) var(--jt-space-7)' }}>
           {/* 1. 좌측 로고 영역 */}
-          <div className="header-logo-container" style={{ display: 'flex', alignItems: 'center', justifySelf: 'start' }}>
+          <div className="header-logo-container" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'flex-start' }}>
             <img 
               src="/logo/logo-h.svg" 
               alt="제니트리 로고" 
@@ -503,7 +503,7 @@ function Home() {
           </div>
 
           {/* 2. 중앙 텍스트 영역 */}
-          <div className="header-text-container" style={{ justifySelf: 'center' }}>
+          <div className="header-text-container">
             <h1 className="header-title">
               제니트리 임직원 전용 화장품 복지몰
             </h1>
@@ -514,7 +514,7 @@ function Home() {
           </div>
 
           {/* 우측 관리 버튼 영역 */}
-          <div className="header-buttons" style={{ justifySelf: 'end' }}>
+          <div className="header-buttons" style={{ flex: 1, display: 'flex', justifyContent: 'flex-end' }}>
             {user ? (
               <button 
                 className="premium-btn"
