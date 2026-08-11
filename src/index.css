@@ -202,11 +202,6 @@ body {
   flex-wrap: wrap;
   gap: 1rem;
 }
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 1rem;
-}
 
 .header-title-container {
   display: flex;
