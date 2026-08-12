@@ -186,9 +186,9 @@ export default function ProductList({ products = [], onAddToCart, onBatchAddToCa
                 <tr>
                   <th colSpan="2">품목</th>
                   <th>규격</th>
-                  <th className="th-self">본인구매</th>
-                  <th className="th-family">가족구매</th>
-                  <th className="th-acquaintance">지인구매</th>
+                  <th className="th-self" style={{ whiteSpace: 'nowrap', fontSize: '0.85rem' }}>본인구매</th>
+                  <th className="th-family" style={{ whiteSpace: 'nowrap', fontSize: '0.85rem' }}>가족구매</th>
+                  <th className="th-acquaintance" style={{ whiteSpace: 'nowrap', fontSize: '0.85rem' }}>지인구매</th>
                 </tr>
               </thead>
               <tbody>

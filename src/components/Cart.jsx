@@ -23,7 +23,7 @@ export default function Cart({ cartItems, onRemoveFromCart, onCheckout, quoteHis
                 <div className="cart-item-info">
                   <h4 className="item-name">{item.product.name}</h4>
                   <div className="item-details">
-                    <span className="badge badge-target">{item.targetType}구매</span>
+                    <span className={`badge badge-${item.targetType}`}>{item.targetType}구매</span>
                     <span className="item-price">{item.price.toLocaleString()}원</span>
                     <span className="item-quantity">x {item.quantity}개</span>
                   </div>

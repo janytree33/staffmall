@@ -70,10 +70,22 @@
   font-weight: 700;
 }
 
-.badge-target {
-  background: var(--jt-neutral-100);
-  color: var(--jt-neutral-800);
-  border: 1px solid var(--jt-color-border);
+.badge-본인 {
+  background: var(--jt-success-50);
+  color: var(--jt-success-700);
+  border: 1px solid var(--jt-success-200);
+}
+
+.badge-가족 {
+  background: var(--jt-info-50);
+  color: var(--jt-info-700);
+  border: 1px solid var(--jt-info-200);
+}
+
+.badge-지인 {
+  background: var(--jt-warning-50);
+  color: var(--jt-warning-800);
+  border: 1px solid var(--jt-warning-200);
 }
 
 .cart-item-actions {
