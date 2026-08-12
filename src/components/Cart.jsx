@@ -7,18 +7,27 @@ export default function Cart({ cartItems, onRemoveFromCart, onCheckout, quoteHis
   // 장바구니 총 수량 계산
   const totalItemCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
 
+  // 본인 -> 가족 -> 지인 순서로 정렬
+  const targetOrder = { '본인': 1, '가족': 2, '지인': 3 };
+  const sortedCartItems = [...cartItems].sort((a, b) => {
+    const orderA = targetOrder[a.targetType] || 99;
+    const orderB = targetOrder[b.targetType] || 99;
+    if (orderA !== orderB) return orderA - orderB;
+    return a.product.name.localeCompare(b.product.name);
+  });
+
   return (
     <div className="cart-container premium-card animate-fade-in" style={{ animationDelay: '0.1s', padding: 'var(--jt-space-6)' }}>
       <h2 style={{ color: 'var(--jt-color-text)', fontWeight: 800, margin: '0 0 var(--jt-space-5) 0', fontSize: '1.5rem' }}>장바구니</h2>
       
-      {cartItems.length === 0 ? (
+      {sortedCartItems.length === 0 ? (
         <div className="empty-cart">
           <p>장바구니가 비어있습니다. 상품을 담아주세요.</p>
         </div>
       ) : (
         <>
           <div className="cart-items-list">
-            {cartItems.map((item) => (
+            {sortedCartItems.map((item) => (
               <div key={item.cartItemId} className="cart-item">
                 <div className="cart-item-info">
                   <h4 className="item-name">{item.product.name}</h4>
