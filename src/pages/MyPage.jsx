@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
-import { sendTelegramCancelAlert } from '../utils/notificationService';
+import { sendTelegramCancelAlert, sendEmailReceipt } from '../utils/notificationService';
 
 export default function MyPage() {
   const [user, setUser] = useState(null);
@@ -91,6 +91,16 @@ export default function MyPage() {
       // 🚀 텔레그램 취소 알림 발송
       try {
         await sendTelegramCancelAlert(user?.name, targetOrderId);
+        
+        // 📧 이메일 취소 알림 발송 (직원 본인에게)
+        const targetOrder = orders.find(o => o.id === targetOrderId);
+        if (targetOrder) {
+          await sendEmailReceipt('cancel', user, {
+            orderId: targetOrderId,
+            items: targetOrder.order_items,
+            totalPrice: targetOrder.total_price
+          });
+        }
       } catch (err) {
         console.error('취소 알림 발송 오류:', err);
       }

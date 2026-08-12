@@ -1,9 +1,14 @@
 /**
- * 알림 발송 서비스 (Telegram API 연동)
+ * 알림 발송 서비스 (Telegram API & EmailJS 연동)
  */
+import emailjs from '@emailjs/browser';
 
 const TELEGRAM_BOT_TOKEN = import.meta.env.VITE_TELEGRAM_BOT_TOKEN;
 const TELEGRAM_CHAT_ID = import.meta.env.VITE_TELEGRAM_CHAT_ID;
+
+const EMAILJS_SERVICE_ID = import.meta.env.VITE_EMAILJS_SERVICE_ID;
+const EMAILJS_TEMPLATE_ID = import.meta.env.VITE_EMAILJS_TEMPLATE_ID;
+const EMAILJS_PUBLIC_KEY = import.meta.env.VITE_EMAILJS_PUBLIC_KEY;
 
 /**
  * 텔레그램 봇으로 주문 알림을 발송합니다.
@@ -73,5 +78,53 @@ export const sendTelegramCancelAlert = async (memberName, orderId) => {
     });
   } catch (error) {
     console.error('텔레그램 취소 알림 에러:', error);
+  }
+};
+
+/**
+ * EmailJS를 이용해 주문/취소 내역을 직원 본인에게 발송합니다.
+ * @param {string} type - 'order' 또는 'cancel'
+ * @param {Object} memberInfo - { email, name }
+ * @param {Object} details - { orderId, items(배열), totalPrice, status }
+ */
+export const sendEmailReceipt = async (type, memberInfo, details) => {
+  if (!EMAILJS_SERVICE_ID || !EMAILJS_TEMPLATE_ID || !EMAILJS_PUBLIC_KEY) {
+    console.warn('EmailJS 키가 설정되지 않았습니다.');
+    return;
+  }
+  if (!memberInfo || !memberInfo.email) {
+    console.warn('받는 사람 이메일 정보가 없어 메일을 발송할 수 없습니다.');
+    return;
+  }
+
+  try {
+    let productDetails = '';
+    if (details.items && details.items.length > 0) {
+      details.items.forEach((item, idx) => {
+        productDetails += `${idx + 1}. ${item.product_name} (${item.target_type}) - ${item.quantity}개\n`;
+      });
+    } else {
+      productDetails = '상세 내역 없음';
+    }
+
+    const templateParams = {
+      to_name: memberInfo.name || '임직원',
+      to_email: memberInfo.email,
+      order_id: details.orderId || '-',
+      order_status: type === 'order' ? '주문 완료' : '주문 취소',
+      product_details: productDetails,
+      total_price: details.totalPrice ? details.totalPrice.toLocaleString() + '원' : '-'
+    };
+
+    const response = await emailjs.send(
+      EMAILJS_SERVICE_ID,
+      EMAILJS_TEMPLATE_ID,
+      templateParams,
+      EMAILJS_PUBLIC_KEY
+    );
+
+    console.log('이메일 발송 성공:', response.status, response.text);
+  } catch (error) {
+    console.error('이메일 발송 실패:', error);
   }
 };

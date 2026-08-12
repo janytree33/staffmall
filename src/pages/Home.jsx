@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import ProductList from '../components/ProductList';
 import Cart from '../components/Cart';
 import AdminPanel from '../components/AdminPanel'; // 🚀 새로 만든 관리자 패널
-import { sendTelegramOrderAlert } from '../utils/notificationService';
+import { sendTelegramOrderAlert, sendEmailReceipt } from '../utils/notificationService';
 
 import { PURCHASE_LIMITS, TARGET_TYPES } from '../utils/constants';
 import { supabase } from '../supabaseClient'; 
@@ -293,6 +293,14 @@ function Home() {
           items: itemsToInsert,
           totalPrice: totalPrice,
           status: '입금대기'
+        });
+
+        // 📧 8. 이메일 영수증 발송 (직원 본인에게)
+        const orderId = newOrder ? newOrder.id : '알수없음';
+        await sendEmailReceipt('order', user, {
+          orderId: orderId,
+          items: itemsToInsert,
+          totalPrice: totalPrice
         });
       } catch (e) {
         console.error('텔레그램 알림 발송 중 오류:', e);
