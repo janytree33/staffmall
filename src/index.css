@@ -292,3 +292,22 @@ body {
     min-width: 0; /* 넘치지 않게 */
   }
 }
+
+/* 모바일 기기(아이폰, 갤럭시) 등에서 폰트 로드 실패/지연 시 'spa', 'eco' 등의 영문이 노출되는 현상 방지 */
+.material-symbols-rounded {
+  font-family: 'Material Symbols Rounded', sans-serif !important;
+  font-weight: normal;
+  font-style: normal;
+  display: inline-block;
+  line-height: 1;
+  text-transform: none;
+  letter-spacing: normal;
+  word-wrap: normal;
+  white-space: nowrap;
+  direction: ltr;
+  /* 글자가 안 깨지고 정확히 렌더링되게 돕는 브라우저 설정 */
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  /* 폰트가 제대로 적용되지 않았을 때는 투명하게 해서 영문자 노출 방지(fallback) */
+  color: inherit;
+}

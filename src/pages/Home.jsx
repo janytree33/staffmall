@@ -552,7 +552,8 @@ function Home() {
                   }
                 }}
               >
-                ⚙️ 관리 설정 {showAdminSettings ? '닫기' : '열기'}
+                <span className="material-symbols-rounded" style={{ fontSize: '16px', marginRight: '4px', verticalAlign: 'middle' }}>settings</span>
+                관리 설정 {showAdminSettings ? '닫기' : '열기'}
               </button>
             )}
             
