@@ -325,7 +325,7 @@ body {
 }
 
 .cart-section {
-  flex: 0 0 380px; /* 장바구니 너비 380px 고정 */
+  flex: 0 0 300px; /* 장바구니 너비 300px로 축소 */
   position: sticky;
   top: 2rem;
   height: max-content;

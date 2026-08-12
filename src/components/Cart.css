@@ -30,7 +30,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 1rem 1.25rem;
+  padding: 0.8rem 1rem; /* 패딩 축소 */
   background: var(--jt-neutral-0);
   border-radius: var(--jt-r-md);
   border: 1px solid var(--jt-color-border);
