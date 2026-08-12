@@ -4,6 +4,18 @@ import { supabase } from '../supabaseClient';
 import { sendTelegramCancelAlert, sendEmailReceipt } from '../utils/notificationService';
 
 export default function MyPage() {
+  // 📞 전화번호 자동 하이픈(-) 포맷팅 함수 (렌더링 용)
+  const formatPhoneNumber = (value) => {
+    if (!value) return '';
+    const cleaned = value.replace(/\D/g, ''); // 숫자 이외의 문자 제거
+    const match = cleaned.match(/^(\d{0,3})(\d{0,4})(\d{0,4})$/);
+    if (!match) return cleaned;
+    
+    if (match[3]) return `${match[1]}-${match[2]}-${match[3]}`;
+    if (match[2]) return `${match[1]}-${match[2]}`;
+    return match[1];
+  };
+
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [orders, setOrders] = useState([]);
@@ -43,6 +55,13 @@ export default function MyPage() {
             total_price,
             status,
             created_at,
+            delivery_type,
+            delivery_name,
+            delivery_phone,
+            delivery_address,
+            delivery_address_detail,
+            delivery_memo,
+            cash_receipt_phone,
             order_items ( product_name, target_type, quantity, price )
           `)
           .eq('member_id', userId)
@@ -243,6 +262,29 @@ export default function MyPage() {
                     </span>
                   </div>
                   
+                  {/* 배송 및 결제 정보 */}
+                  <div style={{ backgroundColor: 'var(--jt-neutral-50)', padding: 'var(--jt-space-3)', borderRadius: 'var(--jt-r-md)', marginBottom: 'var(--jt-space-3)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
+                      <div>
+                        <span style={{ fontWeight: 'bold', marginRight: '6px' }}>수령 방법:</span>
+                        <span style={{ color: order.delivery_type === '택배배송' ? 'var(--jt-color-primary)' : 'var(--jt-color-text)', fontWeight: 'bold' }}>{order.delivery_type || '방문수령'}</span>
+                      </div>
+                      {order.cash_receipt_phone && (
+                        <div>
+                          <span style={{ fontWeight: 'bold', marginRight: '6px' }}>현금영수증:</span>
+                          <span>{formatPhoneNumber(order.cash_receipt_phone)}</span>
+                        </div>
+                      )}
+                    </div>
+                    {order.delivery_type === '택배배송' && (
+                      <div style={{ marginTop: 'var(--jt-space-2)', fontSize: '12px', color: 'var(--jt-color-text-secondary)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        <div><span style={{ fontWeight: 'bold' }}>수령인:</span> {order.delivery_name} ({formatPhoneNumber(order.delivery_phone)})</div>
+                        <div><span style={{ fontWeight: 'bold' }}>배송지:</span> {order.delivery_address} {order.delivery_address_detail}</div>
+                        {order.delivery_memo && <div><span style={{ fontWeight: 'bold' }}>요청사항:</span> {order.delivery_memo}</div>}
+                      </div>
+                    )}
+                  </div>
+
                   <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 'var(--jt-space-2)' }}>
                     {order.order_items?.map((item, idx) => (
                       <li key={idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px' }}>

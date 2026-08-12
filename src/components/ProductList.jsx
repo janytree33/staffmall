@@ -35,6 +35,18 @@ export default function ProductList({ products = [], onAddToCart, onBatchAddToCa
     });
   };
 
+  const handleQuantityInput = (productId, value) => {
+    let newQty = 0;
+    if (value !== '') {
+      newQty = parseInt(value, 10);
+      if (isNaN(newQty) || newQty < 0) newQty = 0;
+    }
+    setSelections(prev => ({
+      ...prev,
+      [productId]: { ...prev[productId], quantity: newQty }
+    }));
+  };
+
   const selectedTotal = products.reduce((sum, product) => {
     const sel = selections[product.id];
     if (!sel) return sum;
@@ -139,8 +151,9 @@ export default function ProductList({ products = [], onAddToCart, onBatchAddToCa
                     <input 
                       type="number" 
                       className="number-input qty-input" 
-                      value={selection.quantity} 
-                      readOnly 
+                      value={selection.quantity === 0 ? '' : selection.quantity} 
+                      onChange={(e) => handleQuantityInput(product.id, e.target.value)}
+                      placeholder="0"
                     />
                     <button 
                       className="qty-btn" 

@@ -24,6 +24,43 @@ function Home() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [orderSuccessData, setOrderSuccessData] = useState(null);
 
+  // 배송 및 결제 폼 상태
+  const [deliveryType, setDeliveryType] = useState('방문수령');
+  const [deliveryName, setDeliveryName] = useState('');
+  const [deliveryPhone, setDeliveryPhone] = useState('');
+  const [deliveryZipcode, setDeliveryZipcode] = useState('');
+  const [deliveryAddress, setDeliveryAddress] = useState('');
+  const [deliveryAddressDetail, setDeliveryAddressDetail] = useState('');
+  const [deliveryMemo, setDeliveryMemo] = useState('');
+  const [cashReceiptPhone, setCashReceiptPhone] = useState('');
+  const [cashReceiptType, setCashReceiptType] = useState('소득공제'); // '소득공제' or '지출증빙'
+
+  // 📞 전화번호 및 사업자번호 자동 하이픈(-) 포맷팅 함수
+  const formatPhoneNumber = (value, type = 'phone') => {
+    if (!value) return '';
+    const cleaned = value.replace(/\D/g, ''); // 숫자 이외의 문자 제거
+    
+    if (type === 'business') {
+      // 사업자등록번호 포맷 (000-00-00000)
+      const match = cleaned.match(/^(\d{0,3})(\d{0,2})(\d{0,5})$/);
+      if (!match) return cleaned;
+      if (match[3]) return `${match[1]}-${match[2]}-${match[3]}`;
+      if (match[2]) return `${match[1]}-${match[2]}`;
+      return match[1];
+    } else {
+      // 휴대폰 번호 포맷 (010-0000-0000)
+      const match = cleaned.match(/^(\d{0,3})(\d{0,4})(\d{0,4})$/);
+      if (!match) return cleaned;
+      if (match[3]) return `${match[1]}-${match[2]}-${match[3]}`;
+      if (match[2]) return `${match[1]}-${match[2]}`;
+      return match[1];
+    }
+  };
+
+  const handlePhoneChange = (e, setter, type = 'phone') => {
+    setter(formatPhoneNumber(e.target.value, type));
+  };
+
   // 관리자 패널 관련 상태
   const [showAdminSettings, setShowAdminSettings] = useState(false);
   const [showOrderHistory, setShowOrderHistory] = useState(false);
@@ -176,7 +213,33 @@ function Home() {
       navigate('/login');
       return;
     }
+    // 모달 초기화
+    setDeliveryType('방문수령');
+    setDeliveryName(user.name || '');
+    setDeliveryPhone('');
+    setDeliveryZipcode('');
+    setDeliveryAddress('');
+    setDeliveryAddressDetail('');
+    setDeliveryMemo('');
+    setCashReceiptPhone('');
+    setCashReceiptType('소득공제');
+    
     setShowAuthModal(true);
+  };
+
+  // 다음 우편번호 검색 API 호출
+  const handlePostcodeSearch = () => {
+    if (window.daum && window.daum.Postcode) {
+      new window.daum.Postcode({
+        oncomplete: function(data) {
+          let addr = data.userSelectedType === 'R' ? data.roadAddress : data.jibunAddress;
+          setDeliveryZipcode(data.zonecode);
+          setDeliveryAddress(addr);
+        }
+      }).open();
+    } else {
+      alert('우편번호 서비스를 불러올 수 없습니다.');
+    }
   };
 
   // 🚀 실제 주문을 데이터베이스에 등록하고 한도를 검증하는 핵심 함수
@@ -248,7 +311,15 @@ function Home() {
         .insert({
           member_id: user.id,
           total_price: totalPrice,
-          status: '입금대기'
+          status: '입금대기',
+          delivery_type: deliveryType,
+          delivery_name: deliveryType === '택배배송' ? deliveryName : null,
+          delivery_phone: deliveryType === '택배배송' ? deliveryPhone : null,
+          delivery_zipcode: deliveryType === '택배배송' ? deliveryZipcode : null,
+          delivery_address: deliveryType === '택배배송' ? deliveryAddress : null,
+          delivery_address_detail: deliveryType === '택배배송' ? deliveryAddressDetail : null,
+          delivery_memo: deliveryType === '택배배송' ? deliveryMemo : null,
+          cash_receipt_phone: cashReceiptPhone
         })
         .select()
         .single();
@@ -271,20 +342,7 @@ function Home() {
 
       if (insertItemsErr) throw insertItemsErr;
 
-      // 6. NTFY 푸시 알림 발송 (기존 유지)
-      const ntfyTopic = import.meta.env.VITE_NTFY_TOPIC || 'janytree_order_alert';
-      try {
-        await fetch(`https://ntfy.sh/${ntfyTopic}`, {
-          method: 'POST',
-          body: `주문알림: [${ordererName}]님이 화장품 주문을 신청했습니다. (총액 ${totalPrice.toLocaleString()}원 / 입금대기)`,
-          headers: {
-            'Title': '제니트리 복지몰 새 주문',
-            'Tags': 'shopping_bags,moneybag'
-          }
-        });
-      } catch (e) {
-        console.error("푸시 알림 발송 실패:", e);
-      }
+      // NTFY 알림은 오류 발생 및 불필요하므로 삭제 (텔레그램 및 이메일 알림으로 대체)
 
       // 🚀 7. 텔레그램 알림 발송 추가
       try {
@@ -681,20 +739,94 @@ function Home() {
         </div>
       )}
 
-      {/* 🔐 결제 확인 모달 */}
+      {/* 🔐 결제 확인 및 배송지 입력 모달 */}
       {showAuthModal && (
         <div style={{
           position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', 
           backgroundColor: 'var(--jt-dim-50)', backdropFilter: 'blur(4px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 9999
         }}>
-          <div className="card animate-fade-in" style={{ width: '90%', maxWidth: '400px', backgroundColor: 'var(--jt-neutral-0)', padding: 'var(--jt-space-7)', borderRadius: 'var(--jt-r-xl)', boxShadow: 'var(--jt-shadow-2xl)' }}>
+          <div className="card animate-fade-in" style={{ 
+            width: '90%', maxWidth: '450px', backgroundColor: 'var(--jt-neutral-0)', 
+            padding: 'var(--jt-space-7)', borderRadius: 'var(--jt-r-xl)', boxShadow: 'var(--jt-shadow-2xl)',
+            maxHeight: '90vh', overflowY: 'auto'
+          }}>
             <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
               <span className="material-symbols-rounded" style={{ fontSize: '2.5rem', marginBottom: '0.5rem', color: 'var(--jt-color-primary)' }}>shopping_cart_checkout</span>
-              <h2 style={{ fontSize: '1.2rem', fontWeight: '800', color: 'var(--jt-color-text)', margin: 0 }}>주문 확인</h2>
+              <h2 style={{ fontSize: '1.2rem', fontWeight: '800', color: 'var(--jt-color-text)', margin: 0 }}>주문 정보 입력</h2>
             </div>
-            <p style={{ fontSize: '0.95rem', color: 'var(--jt-color-text-secondary)', marginBottom: '1.5rem', textAlign: 'center', lineHeight: '1.5' }}>
-              장바구니에 담은 상품들을<br/>최종 주문 접수하시겠습니까?
-            </p>
+
+            {/* 수령 방법 선택 */}
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: 'bold', marginBottom: '0.5rem' }}>수령 방법</label>
+              <div style={{ display: 'flex', gap: '1rem' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer' }}>
+                  <input type="radio" name="deliveryType" value="방문수령" checked={deliveryType === '방문수령'} onChange={(e) => setDeliveryType(e.target.value)} />
+                  방문 수령
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer' }}>
+                  <input type="radio" name="deliveryType" value="택배배송" checked={deliveryType === '택배배송'} onChange={(e) => setDeliveryType(e.target.value)} />
+                  택배 배송
+                </label>
+              </div>
+              <p style={{ fontSize: '0.8rem', color: 'var(--jt-color-primary)', marginTop: '0.6rem', marginBottom: '0', display: 'flex', alignItems: 'center' }}>
+                <span className="material-symbols-rounded" style={{ fontSize: '16px', marginRight: '4px' }}>lightbulb</span>
+                가급적이면 방문 수령을 권장합니다.
+              </p>
+            </div>
+
+            {/* 택배 배송일 때만 노출되는 폼 */}
+            {deliveryType === '택배배송' && (
+              <div style={{ border: '1px solid var(--jt-neutral-200)', padding: '1rem', borderRadius: 'var(--jt-r-md)', marginBottom: '1rem', backgroundColor: 'var(--jt-neutral-50)' }}>
+                <div style={{ marginBottom: '0.8rem' }}>
+                  <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '0.3rem' }}>수령인</label>
+                  <input type="text" value={deliveryName} onChange={(e) => setDeliveryName(e.target.value)} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--jt-color-border)' }} />
+                </div>
+                <div style={{ marginBottom: '0.8rem' }}>
+                  <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '0.3rem' }}>
+                    연락처 <span style={{ color: 'var(--jt-color-text-tertiary)', fontSize: '0.75rem', fontWeight: 'normal' }}>(숫자만 입력)</span>
+                  </label>
+                  <input type="text" value={deliveryPhone} onChange={(e) => handlePhoneChange(e, setDeliveryPhone)} placeholder="숫자만 입력하세요" maxLength="13" style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--jt-color-border)' }} />
+                </div>
+                <div style={{ marginBottom: '0.8rem' }}>
+                  <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '0.3rem' }}>주소</label>
+                  <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                    <input type="text" value={deliveryZipcode} readOnly placeholder="우편번호" style={{ flex: 1, padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--jt-color-border)', backgroundColor: '#f9f9f9' }} />
+                    <button type="button" onClick={handlePostcodeSearch} style={{ padding: '0.5rem 1rem', borderRadius: '4px', border: '1px solid var(--jt-color-primary)', backgroundColor: 'var(--jt-neutral-0)', color: 'var(--jt-color-primary)', cursor: 'pointer' }}>주소 찾기</button>
+                  </div>
+                  <input type="text" value={deliveryAddress} readOnly placeholder="기본 주소" style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--jt-color-border)', marginBottom: '0.5rem', backgroundColor: '#f9f9f9' }} />
+                  <input type="text" value={deliveryAddressDetail} onChange={(e) => setDeliveryAddressDetail(e.target.value)} placeholder="상세 주소를 입력해주세요" style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--jt-color-border)' }} />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '0.3rem' }}>배송 요청사항</label>
+                  <input type="text" value={deliveryMemo} onChange={(e) => setDeliveryMemo(e.target.value)} placeholder="문 앞에 놓아주세요" style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--jt-color-border)' }} />
+                </div>
+              </div>
+            )}
+
+            {/* 현금영수증 공통 */}
+            <div style={{ marginBottom: '1.5rem' }}>
+              <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: 'bold', marginBottom: '0.5rem' }}>
+                현금영수증 발급 정보 <span style={{ color: 'var(--jt-color-text-tertiary)', fontSize: '0.75rem', fontWeight: 'normal' }}>(숫자만 입력)</span>
+              </label>
+              <div style={{ display: 'flex', gap: '1rem', marginBottom: '0.6rem' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer', fontSize: '0.85rem' }}>
+                  <input type="radio" name="cashReceiptType" value="소득공제" checked={cashReceiptType === '소득공제'} onChange={(e) => { setCashReceiptType(e.target.value); setCashReceiptPhone(''); }} />
+                  개인소득공제 (휴대폰)
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer', fontSize: '0.85rem' }}>
+                  <input type="radio" name="cashReceiptType" value="지출증빙" checked={cashReceiptType === '지출증빙'} onChange={(e) => { setCashReceiptType(e.target.value); setCashReceiptPhone(''); }} />
+                  지출증빙용 (사업자)
+                </label>
+              </div>
+              <input 
+                type="text" 
+                value={cashReceiptPhone} 
+                onChange={(e) => handlePhoneChange(e, setCashReceiptPhone, cashReceiptType === '지출증빙' ? 'business' : 'phone')} 
+                placeholder={cashReceiptType === '지출증빙' ? "사업자번호 입력 (예: 1234567890)" : "숫자만 입력 (미입력 시 자진발급: 010-000-1234)"} 
+                maxLength={cashReceiptType === '지출증빙' ? 12 : 13} 
+                style={{ width: '100%', padding: '0.6rem', borderRadius: '4px', border: '1px solid var(--jt-color-border)' }} 
+              />
+            </div>
 
             <div style={{ display: 'flex', gap: '0.75rem' }}>
               <button 
