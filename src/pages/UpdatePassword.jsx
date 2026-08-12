@@ -5,10 +5,31 @@ import { supabase } from '../supabaseClient';
 export default function UpdatePassword() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+
+  const getMasked = (val) => val.length === 0 ? '' : val[0] + '●'.repeat(val.length - 1);
+  const displayPassword = showPassword ? password : getMasked(password);
+  const displayConfirmPassword = showConfirmPassword ? confirmPassword : getMasked(confirmPassword);
+
+  const handlePwdChange = (e, setter, isShow, maskedVal) => {
+    if (isShow) {
+      setter(e.target.value);
+    } else {
+      const displayed = e.target.value;
+      if (displayed.length > maskedVal.length) {
+        const added = displayed.slice(maskedVal.length);
+        setter(prev => prev + added);
+      } else {
+        setter(prev => prev.slice(0, displayed.length));
+      }
+    }
+  };
 
   const handleUpdate = async (e) => {
     e.preventDefault();
@@ -75,9 +96,14 @@ export default function UpdatePassword() {
             margin: 0, 
             fontWeight: 800,
             fontSize: '22px',
-            letterSpacing: '-0.5px'
+            letterSpacing: '-0.5px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '8px'
           }}>
-            🔒 비밀번호 변경
+            <span className="material-symbols-rounded" style={{ fontSize: '26px' }}>lock</span>
+            비밀번호 변경
           </h2>
           <p style={{ color: 'var(--jt-color-text-secondary)', fontSize: '14px', marginTop: 'var(--jt-space-3)' }}>
             안전을 위해 자신만의 새로운 비밀번호로 변경해주세요.
@@ -89,30 +115,64 @@ export default function UpdatePassword() {
             <label style={{ display: 'block', color: 'var(--jt-color-text)', fontWeight: 600, marginBottom: 'var(--jt-space-2)', fontSize: '14px' }}>
               새 비밀번호
             </label>
-            <input 
-              type="password" 
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              className="premium-input"
-              style={{ height: 'var(--jt-control-height-lg)' }}
-              placeholder="********"
-            />
+            <div style={{ position: 'relative' }}>
+              <input 
+                type="text" 
+                value={displayPassword}
+                onChange={(e) => handlePwdChange(e, setPassword, showPassword, displayPassword)}
+                required
+                className="premium-input"
+                style={{ 
+                  height: 'var(--jt-control-height-lg)',
+                  fontFamily: 'var(--jt-font-num)', 
+                  letterSpacing: (!showPassword && displayPassword.length > 0) ? '0.2rem' : 'normal',
+                  paddingRight: '40px'
+                }}
+                placeholder="********"
+              />
+              <span 
+                className="material-symbols-rounded" 
+                onClick={() => setShowPassword(!showPassword)}
+                style={{
+                  position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)',
+                  color: 'var(--jt-color-text-tertiary)', fontSize: '20px', cursor: 'pointer'
+                }}
+              >
+                {showPassword ? 'visibility' : 'visibility_off'}
+              </span>
+            </div>
           </div>
 
           <div>
             <label style={{ display: 'block', color: 'var(--jt-color-text)', fontWeight: 600, marginBottom: 'var(--jt-space-2)', fontSize: '14px' }}>
               새 비밀번호 확인
             </label>
-            <input 
-              type="password" 
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              required
-              className="premium-input"
-              style={{ height: 'var(--jt-control-height-lg)' }}
-              placeholder="********"
-            />
+            <div style={{ position: 'relative' }}>
+              <input 
+                type="text" 
+                value={displayConfirmPassword}
+                onChange={(e) => handlePwdChange(e, setConfirmPassword, showConfirmPassword, displayConfirmPassword)}
+                required
+                className="premium-input"
+                style={{ 
+                  height: 'var(--jt-control-height-lg)',
+                  fontFamily: 'var(--jt-font-num)', 
+                  letterSpacing: (!showConfirmPassword && displayConfirmPassword.length > 0) ? '0.2rem' : 'normal',
+                  paddingRight: '40px'
+                }}
+                placeholder="********"
+              />
+              <span 
+                className="material-symbols-rounded" 
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                style={{
+                  position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)',
+                  color: 'var(--jt-color-text-tertiary)', fontSize: '20px', cursor: 'pointer'
+                }}
+              >
+                {showConfirmPassword ? 'visibility' : 'visibility_off'}
+              </span>
+            </div>
           </div>
 
           {errorMsg && (
