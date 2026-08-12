@@ -67,7 +67,7 @@ body {
 
 /* ───────── 카드 ───────── */
 .card {
-  background: var(--jt-neutral-0);
+  background-color: var(--jt-neutral-50);
   border-radius: var(--jt-r-lg);
   box-shadow: var(--jt-shadow-md);
   border: 1px solid var(--jt-color-border);
@@ -310,4 +310,35 @@ body {
   text-rendering: optimizeLegibility;
   /* 폰트가 제대로 적용되지 않았을 때는 투명하게 해서 영문자 노출 방지(fallback) */
   color: inherit;
+}
+
+/* ───────── 홈 레이아웃 (ProductList & Cart) ───────── */
+.home-main-layout {
+  display: flex;
+  gap: 2rem;
+  align-items: flex-start;
+}
+
+.product-list-section {
+  flex: 1;
+  min-width: 0;
+}
+
+.cart-section {
+  flex: 0 0 380px; /* 장바구니 너비 380px 고정 */
+  position: sticky;
+  top: 2rem;
+  height: max-content;
+  z-index: 10;
+}
+
+@media (max-width: 992px) {
+  .home-main-layout {
+    flex-direction: column;
+  }
+  .cart-section {
+    flex: none;
+    width: 100%;
+    position: static;
+  }
 }

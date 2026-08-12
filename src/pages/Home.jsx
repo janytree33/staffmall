@@ -569,14 +569,17 @@ function Home() {
           </div>
         </div>
       </header>
-
-      <main>
-        <ProductList products={products} onAddToCart={handleAddToCart} onBatchAddToCart={handleBatchAddToCart} />
-        <Cart 
-          cartItems={cartItems} 
-          onRemoveFromCart={handleRemoveFromCart}
-          onCheckout={handleCheckoutClick}
-        />
+      <main className="home-main-layout">
+        <div className="product-list-section">
+          <ProductList products={products} onAddToCart={handleAddToCart} onBatchAddToCart={handleBatchAddToCart} />
+        </div>
+        <div className="cart-section">
+          <Cart 
+            cartItems={cartItems} 
+            onRemoveFromCart={handleRemoveFromCart}
+            onCheckout={handleCheckoutClick}
+          />
+        </div>
       </main>
 
       {/* 🔒 커스텀 비밀번호 모달 */}
