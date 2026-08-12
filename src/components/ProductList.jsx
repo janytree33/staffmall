@@ -194,7 +194,7 @@ export default function ProductList({ products = [], onAddToCart, onBatchAddToCa
               <tbody>
                 {products.map(p => (
                   <tr key={p.id}>
-                    <td colSpan="2" className="brand-cell" style={{ textAlign: 'left', paddingLeft: '1rem' }}>{p.name}</td>
+                    <td colSpan="2" className="brand-cell" style={{ textAlign: 'left', paddingLeft: '1rem', wordBreak: 'keep-all' }}>{p.name}</td>
                     <td>{p.spec_ml}</td>
                     <td className="cell-self">{p.price_self.toLocaleString()}</td>
                     <td className="cell-family">{p.price_family.toLocaleString()}</td>
@@ -240,9 +240,12 @@ export default function ProductList({ products = [], onAddToCart, onBatchAddToCa
               flexDirection: 'column',
               gap: '0.3rem'
             }}>
-              <div style={{ display: 'flex', alignItems: 'center' }}>
-                <span className="material-symbols-rounded" style={{ fontSize: '16px', fontVariationSettings: "'FILL' 0, 'wght' 400", marginRight: '6px', color: 'var(--jt-neutral-0)' }}>account_balance</span>
-                <span style={{ color: '#34d399', fontWeight: 'bold' }}>계좌:</span>&nbsp;<span style={{ color: 'var(--jt-neutral-0)' }}>신한은행 100-026-244778 (주)제니트리</span>
+              <div style={{ display: 'flex', alignItems: 'flex-start' }}>
+                <span className="material-symbols-rounded" style={{ fontSize: '16px', fontVariationSettings: "'FILL' 0, 'wght' 400", marginRight: '6px', marginTop: '2px', color: 'var(--jt-neutral-0)' }}>account_balance</span>
+                <span style={{ color: '#34d399', fontWeight: 'bold', whiteSpace: 'nowrap', marginRight: '4px' }}>계좌:</span>
+                <div style={{ color: 'var(--jt-neutral-0)' }}>
+                  신한은행 100-026-244778
+                </div>
               </div>
               <div style={{ display: 'flex', alignItems: 'center' }}>
                 <span className="material-symbols-rounded" style={{ fontSize: '16px', fontVariationSettings: "'FILL' 0, 'wght' 400", marginRight: '6px', color: 'var(--jt-neutral-0)' }}>schedule</span>

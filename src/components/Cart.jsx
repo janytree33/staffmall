@@ -7,50 +7,96 @@ export default function Cart({ cartItems, onRemoveFromCart, onCheckout, quoteHis
   // 장바구니 총 수량 계산
   const totalItemCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
 
-  // 본인 -> 가족 -> 지인 순서로 정렬
-  const targetOrder = { '본인': 1, '가족': 2, '지인': 3 };
-  const sortedCartItems = [...cartItems].sort((a, b) => {
-    const orderA = targetOrder[a.targetType] || 99;
-    const orderB = targetOrder[b.targetType] || 99;
-    if (orderA !== orderB) return orderA - orderB;
-    return a.product.name.localeCompare(b.product.name);
-  });
+  // 구매 대상별로 장바구니 아이템 그룹화
+  const groupedCart = cartItems.reduce((acc, item) => {
+    if (!acc[item.targetType]) acc[item.targetType] = [];
+    acc[item.targetType].push(item);
+    return acc;
+  }, {});
+
+  const getHeaderIcon = (targetType) => {
+    switch (targetType) {
+      case '본인': return 'person';
+      case '가족': return 'family_restroom';
+      case '지인': return 'redeem'; // 선물 상자 모양
+      default: return '';
+    }
+  };
+
+  const renderHeaderIcon = (targetType) => {
+    return (
+      <span 
+        className="material-symbols-rounded" 
+        style={{ 
+          fontSize: '18px', 
+          fontVariationSettings: "'FILL' 1, 'wght' 600",
+          verticalAlign: 'text-bottom'
+        }}
+      >
+        {getHeaderIcon(targetType)}
+      </span>
+    );
+  };
+
+  const getBadgeClass = (targetType) => {
+    switch (targetType) {
+      case '본인': return 'badge-self';
+      case '가족': return 'badge-family';
+      case '지인': return 'badge-acquaintance';
+      default: return '';
+    }
+  };
 
   return (
     <div className="cart-container premium-card animate-fade-in" style={{ animationDelay: '0.1s', padding: 'var(--jt-space-6)' }}>
       <h2 style={{ color: 'var(--jt-color-text)', fontWeight: 800, margin: '0 0 var(--jt-space-5) 0', fontSize: '1.5rem' }}>장바구니</h2>
       
-      {sortedCartItems.length === 0 ? (
+      {cartItems.length === 0 ? (
         <div className="empty-cart">
           <p>장바구니가 비어있습니다. 상품을 담아주세요.</p>
         </div>
       ) : (
         <>
           <div className="cart-items-list">
-            {sortedCartItems.map((item) => (
-              <div key={item.cartItemId} className="cart-item">
-                <div className="cart-item-info">
-                  <h4 className="item-name">{item.product.name}</h4>
-                  <div className="item-details">
-                    <span className={`badge badge-${item.targetType}`}>{item.targetType}구매</span>
-                    <span className="item-price">{item.price.toLocaleString()}원</span>
-                    <span className="item-quantity">x {item.quantity}개</span>
+            {['본인', '가족', '지인'].map((type) => {
+              const groupItems = groupedCart[type];
+              if (!groupItems || groupItems.length === 0) return null;
+              
+              // 그룹 내 아이템 정렬 (상품명 기준)
+              groupItems.sort((a, b) => a.product.name.localeCompare(b.product.name));
+
+              return (
+                <div key={type} className="cart-group-card">
+                  <div className="cart-group-header">
+                    <span className={`badge ${getBadgeClass(type)}`}>
+                      <span style={{ marginRight: '4px' }}>{renderHeaderIcon(type)}</span>
+                      {type}구매
+                    </span>
+                  </div>
+                  
+                  <div className="cart-group-items">
+                    {groupItems.map((item) => (
+                      <div key={item.cartItemId} className="cart-group-item">
+                        <div className="cart-group-item-info">
+                          <span className="item-name">{item.product.name}</span>
+                          <span className="item-price-qty">{item.price.toLocaleString()}원 x {item.quantity}개</span>
+                        </div>
+                        <div className="cart-group-item-actions">
+                          <span className="item-subtotal">{(item.price * item.quantity).toLocaleString()}원</span>
+                          <button 
+                            className="delete-btn"
+                            onClick={() => onRemoveFromCart(item.cartItemId)}
+                            title="삭제"
+                          >
+                            <span className="material-symbols-rounded">delete</span>
+                          </button>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
-                <div className="cart-item-actions">
-                  <span className="item-subtotal" style={{ fontWeight: 700 }}>{(item.price * item.quantity).toLocaleString()}원</span>
-                  <button 
-                    style={{ background: 'none', border: 'none', padding: '0.2rem', cursor: 'pointer', display: 'flex', alignItems: 'center', transition: 'all 0.15s', opacity: 0.7, color: 'var(--jt-color-text-secondary)' }}
-                    onMouseEnter={(e) => { e.currentTarget.style.opacity = 1; e.currentTarget.style.color = 'var(--jt-seed-color-error)'; e.currentTarget.style.transform = 'scale(1.1)'; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.opacity = 0.7; e.currentTarget.style.color = 'var(--jt-color-text-secondary)'; e.currentTarget.style.transform = 'scale(1)'; }}
-                    onClick={() => onRemoveFromCart(item.cartItemId)}
-                    title="삭제"
-                  >
-                    <span className="material-symbols-rounded" style={{ fontSize: '22px', fontVariationSettings: "'FILL' 0, 'wght' 400" }}>delete</span>
-                  </button>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
           <div className="cart-summary">

@@ -26,84 +26,136 @@
   margin-bottom: 2rem;
 }
 
-.cart-item {
+/* 그룹 카드 컨테이너 */
+.cart-group-card {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0.8rem 1rem; /* 패딩 축소 */
+  flex-direction: column;
   background: var(--jt-neutral-0);
   border-radius: var(--jt-r-md);
   border: 1px solid var(--jt-color-border);
   box-shadow: var(--jt-shadow-sm);
-  transition: transform 0.15s, box-shadow 0.15s;
+  overflow: hidden;
+  margin-bottom: 0.5rem;
 }
 
-.cart-item:hover {
-  transform: translateX(4px);
-  box-shadow: var(--jt-shadow-md);
+/* 그룹 카드 헤더 (본인구매, 가족구매 뱃지 영역) */
+.cart-group-header {
+  padding: 0.8rem 1rem 0.8rem 0.2rem; /* 뱃지 내부 패딩(0.8rem)을 고려하여 시작선을 아이템(1rem)과 맞춤 */
+  background-color: transparent;
+  border-bottom: 1px solid var(--jt-neutral-200);
+  display: flex;
+  align-items: center;
 }
 
-.cart-item-info {
+/* 그룹 내 아이템 리스트 */
+.cart-group-items {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+}
+
+/* 개별 아이템 행 */
+.cart-group-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  border-bottom: 1px dashed var(--jt-neutral-200);
+  transition: background-color 0.15s;
+}
+
+.cart-group-item:last-child {
+  border-bottom: none;
+}
+
+.cart-group-item:hover {
+  background-color: var(--jt-neutral-50);
+}
+
+.cart-group-item-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  flex: 1;
+  min-width: 0; 
 }
 
 .item-name {
-  font-size: 1rem;
-  font-weight: 700;
+  font-size: 0.85rem;
+  font-weight: 500;
   color: var(--jt-color-text);
+  line-height: 1.3;
+  /* nowrap 제거: 너무 길면 여러 줄로 예쁘게 표시됨 */
 }
 
-.item-details {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  font-size: 0.9rem;
+.item-price-qty {
+  font-size: 0.85rem;
   color: var(--jt-color-text-secondary);
 }
 
-.badge {
-  padding: 0.2rem 0.6rem;
-  border-radius: 9999px;
-  font-size: 0.75rem;
-  font-weight: 700;
+.cart-group-item-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.3rem;
+  margin-left: auto;
 }
 
-.badge-본인 {
+.delete-btn {
+  background: none;
+  border: none;
+  padding: 0.2rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  color: var(--jt-neutral-400);
+  transition: all 0.15s;
+}
+
+.delete-btn:hover {
+  color: var(--jt-color-danger);
+  transform: scale(1.1);
+}
+
+.item-subtotal {
+  font-weight: 800;
+  font-size: 0.95rem;
+  color: var(--jt-color-text);
+}
+
+.badge {
+  padding: 0.3rem 0.8rem;
+  border-radius: 9999px;
+  font-size: 1rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+/* Vite CSS 빌드 오류 방지를 위한 영문 클래스 */
+.badge-self {
   background: var(--jt-success-50);
   color: var(--jt-success-700);
-  border: 1px solid var(--jt-success-200);
+  border: 1px solid var(--jt-success-300);
 }
 
-.badge-가족 {
+.badge-family {
   background: var(--jt-info-50);
   color: var(--jt-info-700);
-  border: 1px solid var(--jt-info-200);
+  border: 1px solid var(--jt-info-300);
 }
 
-.badge-지인 {
+.badge-acquaintance {
   background: var(--jt-warning-50);
   color: var(--jt-warning-800);
-  border: 1px solid var(--jt-warning-200);
+  border: 1px solid var(--jt-warning-300);
 }
 
 .cart-item-actions {
   display: flex;
   align-items: center;
-  gap: 1rem;
-}
-
-.item-subtotal {
-  font-weight: 800;
-  font-size: 1.1rem;
-  color: var(--jt-color-text);
-}
-
-.btn-sm {
-  padding: 0.4rem 0.9rem;
-  font-size: 0.85rem;
-  border-radius: 9999px;
+  justify-content: space-between;
+  width: 100%;
+  border-top: 1px dashed var(--jt-neutral-200);
+  padding-top: 0.5rem;
 }
 
 .cart-summary {
