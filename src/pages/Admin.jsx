@@ -18,6 +18,9 @@ export default function Admin() {
     const now = new Date();
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
   });
+  
+  // 선택된 주문 관리 상태
+  const [selectedOrders, setSelectedOrders] = useState([]);
 
   async function checkUserAndFetchData() {
     const sessionUser = JSON.parse(localStorage.getItem('custom_user') || 'null');
@@ -43,6 +46,8 @@ export default function Admin() {
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     checkUserAndFetchData();
+    // 월 변경 시 선택된 주문 초기화
+    setSelectedOrders([]);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedMonth]);
 
@@ -130,9 +135,14 @@ export default function Admin() {
   const downloadDeliveryCSV = () => {
     const headers = ["판매채널","주문번호","주문상태","총 품목합계금액","총 합계 할인금액","총 합계 배송비","총 합계 포인트 사용액","최종주문금액","주문자 이름","주문자 이메일","주문자 번호","배송방식","배송비결제방식","배송송장번호","주문섹션번호","주문섹션번호","알파벳","주문섹션품목번호","박스수량","상품명","품목명","판매가","품목등급할인금액","품목포인트사용금액","품목쿠폰할인금액","품목실결제가","수령자명","수령자 전화번호","배송지 국가코드","배송지 우편번호","주소","상세주소","배송메모","택배사명","취소사유","반품사유","취소상세사유","반품 상세사유","주문일","상품고유번호"];
     
-    const targetOrders = adminOrders.filter(o => o.delivery_type === '택배배송' && o.status !== '주문취소');
+    if (selectedOrders.length === 0) {
+      alert("다운로드할 주문을 먼저 체크박스로 선택해주세요.");
+      return;
+    }
+
+    const targetOrders = adminOrders.filter(o => o.delivery_type === '택배배송' && o.status !== '주문취소' && selectedOrders.includes(o.id));
     if (targetOrders.length === 0) {
-      alert("다운로드할 택배 배송 주문(취소 제외)이 없습니다.");
+      alert("선택하신 주문 중 다운로드 가능한 택배 배송 주문(취소 제외)이 없습니다.");
       return;
     }
 
@@ -179,6 +189,27 @@ export default function Admin() {
 
   if (!user) return null; // 권한 확인 전 빈 화면
 
+  const handleSelectAll = (e) => {
+    if (e.target.checked) {
+      // 택배배송이면서 취소가 아닌 건만 전체선택
+      const downloadableIds = adminOrders
+        .filter(o => o.delivery_type === '택배배송' && o.status !== '주문취소')
+        .map(o => o.id);
+      setSelectedOrders(downloadableIds);
+    } else {
+      setSelectedOrders([]);
+    }
+  };
+
+  const handleSelectOrder = (orderId) => {
+    setSelectedOrders(prev => 
+      prev.includes(orderId) ? prev.filter(id => id !== orderId) : [...prev, orderId]
+    );
+  };
+
+  const downloadableCount = adminOrders.filter(o => o.delivery_type === '택배배송' && o.status !== '주문취소').length;
+  const isAllSelected = downloadableCount > 0 && selectedOrders.length === downloadableCount;
+
   return (
     <div className="container" style={{ paddingBottom: '140px' }}>
       <header style={{ marginBottom: '2.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -191,17 +222,15 @@ export default function Admin() {
       </header>
 
       <h2 style={{ marginBottom: '2rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--jt-color-primary)', fontSize: '1.5rem' }}>
-        <span className="material-symbols-rounded" style={{ fontSize: '1.8rem' }}>admin_panel_settings</span>
+        <span className="material-symbols-rounded" style={{ fontSize: '1.8rem', color: 'var(--jt-color-text)' }}>admin_panel_settings</span>
         관리자 대시보드
       </h2>
-
-
 
       <div style={{ marginBottom: '3rem', animation: 'fadeIn 0.3s ease-out' }}>
         <div className="card" style={{ padding: '1.5rem', border: '1px solid var(--jt-color-border)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
             <h3 style={{ fontSize: '1.4rem', color: 'var(--jt-color-primary)', display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0 }}>
-              <span className="material-symbols-rounded" style={{ fontSize: '24px', color: 'var(--jt-color-accent)' }}>monitoring</span>
+              <span className="material-symbols-rounded" style={{ fontSize: '24px', color: 'var(--jt-color-text)' }}>monitoring</span>
               주문 현황 및 취소 관리
             </h3>
             
@@ -228,7 +257,12 @@ export default function Admin() {
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem', textAlign: 'center', backgroundColor: '#ffffff' }}>
               <thead style={{ backgroundColor: '#ffffff', position: 'sticky', top: 0, zIndex: 10 }}>
                 <tr>
-                  <th style={{ padding: '0.8rem', border: '1px solid var(--jt-color-border)' }}>주문일시</th>
+                  <th style={{ padding: '0.8rem', border: '1px solid var(--jt-color-border)', width: '130px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem' }}>
+                      <input type="checkbox" onChange={handleSelectAll} checked={isAllSelected} style={{ cursor: 'pointer' }} />
+                      주문일시
+                    </div>
+                  </th>
                   <th style={{ padding: '0.8rem', border: '1px solid var(--jt-color-border)', width: '35%' }}>직원 및 상세 주문 품목</th>
                   <th style={{ padding: '0.8rem', border: '1px solid var(--jt-color-border)' }}>총 결제액</th>
                   <th style={{ padding: '0.8rem', border: '1px solid var(--jt-color-border)' }}>현재 상태</th>
@@ -237,13 +271,18 @@ export default function Admin() {
               </thead>
               <tbody>
                 {adminOrders.map(order => (
-                  <tr key={order.id} style={{ borderBottom: '1px solid var(--jt-color-border)', opacity: order.status === '주문취소' ? 0.8 : 1 }}>
-                    <td style={{ padding: '1rem 0.8rem', border: '1px solid var(--jt-color-border)', verticalAlign: 'middle', textDecoration: order.status === '주문취소' ? 'line-through' : 'none' }}>
-                      {new Date(order.created_at).toLocaleString()}
+                  <tr key={order.id} style={{ borderBottom: '1px solid var(--jt-color-border)', transition: 'background-color 0.2s', backgroundColor: selectedOrders.includes(order.id) ? 'var(--jt-neutral-50)' : 'transparent' }}>
+                    <td style={{ padding: '1rem 0.8rem', border: '1px solid var(--jt-color-border)', fontSize: '0.85rem', verticalAlign: 'middle' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem' }}>
+                        {order.delivery_type === '택배배송' && order.status !== '주문취소' && (
+                          <input type="checkbox" checked={selectedOrders.includes(order.id)} onChange={() => handleSelectOrder(order.id)} style={{ cursor: 'pointer' }} />
+                        )}
+                        {new Date(order.created_at).toLocaleString()}
+                      </div>
                     </td>
                     <td style={{ padding: '1rem 1rem', border: '1px solid var(--jt-color-border)', textAlign: 'left', verticalAlign: 'middle' }}>
                       <div style={{ fontWeight: 'bold', fontSize: '1.05rem', color: order.status === '주문취소' ? 'var(--jt-neutral-500)' : 'var(--jt-color-primary)', marginBottom: '0.5rem', textDecoration: order.status === '주문취소' ? 'line-through' : 'none' }}>
-                        <span className="material-symbols-rounded" style={{ fontSize: '18px', marginRight: '6px', verticalAlign: 'text-bottom' }}>person</span> 
+                        <span className="material-symbols-rounded" style={{ fontSize: '18px', marginRight: '6px', verticalAlign: 'text-bottom', color: 'var(--jt-color-primary)' }}>person</span> 
                         {order.members?.name} 직원님
                       </div>
                       <div style={{ backgroundColor: order.status === '주문취소' ? 'var(--jt-neutral-50)' : 'var(--jt-neutral-0)', padding: '0.6rem', borderRadius: 'var(--jt-r-md)', border: '1px dashed var(--jt-color-border)' }}>

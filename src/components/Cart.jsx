@@ -51,8 +51,9 @@ export default function Cart({ cartItems, onRemoveFromCart, onCheckout, user, qu
       <h2 style={{ color: 'var(--jt-color-text)', fontWeight: 800, margin: '0 0 var(--jt-space-5) 0', fontSize: '1.2rem' }}>장바구니</h2>
       
       {cartItems.length === 0 ? (
-        <div className="empty-cart">
-          <p>장바구니가 비어있습니다. 상품을 담아주세요.</p>
+        <div className="empty-cart" style={{ textAlign: 'left', color: 'var(--jt-color-text-secondary)', fontWeight: '600', fontSize: '0.9rem', lineHeight: '1.5' }}>
+          <div>장바구니가 비어있습니다.</div>
+          <div>상품을 담아주세요.</div>
         </div>
       ) : (
         <>
