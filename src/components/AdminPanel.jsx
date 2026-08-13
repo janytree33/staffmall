@@ -91,10 +91,8 @@ export default function AdminPanel({ members, products }) {
       console.error("멤버 추가 에러:", error);
       alert("멤버 추가에 실패했습니다. (동일한 이메일이 이미 존재할 수 있습니다.)");
     } else if (data && data.length > 0) {
-      setMembers([...members, data[0]]);
-      setNewMemberName('');
-      setNewMemberEmail('');
-      setNewMemberPin('');
+      alert("멤버가 성공적으로 추가되었습니다.");
+      window.location.reload();
     }
     setIsAddingMember(false);
   };
@@ -104,6 +102,8 @@ export default function AdminPanel({ members, products }) {
     try {
       const { error } = await supabase.from('members').delete().eq('id', id);
       if (error) throw error;
+      alert("삭제되었습니다.");
+      window.location.reload();
     } catch (e) {
       console.error(e);
       alert("삭제 실패");
