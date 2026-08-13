@@ -252,6 +252,14 @@ function Home() {
     setIsProcessing(true);
 
     try {
+      if (deliveryType === '택배배송') {
+        if (!deliveryName.trim() || !deliveryPhone.trim() || !deliveryZipcode.trim() || !deliveryAddress.trim()) {
+          alert("택배 배송을 위한 수령인 이름, 연락처, 기본 주소를 모두 입력해주세요.");
+          setIsProcessing(false);
+          return;
+        }
+      }
+
       // 1. 직원 정보 확인 (프로필에서 이름 가져오기)
       const ordererName = user.name;
       
