@@ -415,6 +415,9 @@ function Home() {
           delivery_address,
           delivery_address_detail,
           delivery_memo,
+          cash_receipt_requested,
+          cash_receipt_type,
+          cash_receipt_number,
           members ( name, phone_last_4_hashed ),
           order_items ( product_name, target_type, quantity, price )
         `)
@@ -1013,6 +1016,16 @@ function Home() {
                             <div><strong>연락처:</strong> {order.delivery_phone}</div>
                             <div><strong>주소:</strong> {order.delivery_address} {order.delivery_address_detail}</div>
                             {order.delivery_memo && <div><strong>메모:</strong> {order.delivery_memo}</div>}
+                          </div>
+                        )}
+                        {order.cash_receipt_requested && (
+                          <div style={{ marginTop: '0.4rem', paddingTop: '0.4rem', borderTop: '1px dashed var(--jt-color-border)', lineHeight: '1.4' }}>
+                            <div style={{ fontWeight: 'bold', color: 'var(--jt-color-primary)', marginBottom: '0.2rem' }}>
+                              <span className="material-symbols-rounded" style={{ fontSize: '16px', marginRight: '4px', verticalAlign: 'text-bottom' }}>receipt_long</span>
+                              현금영수증 신청
+                            </div>
+                            <div><strong>용도:</strong> {order.cash_receipt_type}</div>
+                            <div><strong>발급번호:</strong> {order.cash_receipt_number}</div>
                           </div>
                         )}
                       </div>
