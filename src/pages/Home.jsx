@@ -402,7 +402,7 @@ function Home() {
                 style={{ backgroundColor: 'var(--jt-color-primary)', color: 'var(--jt-neutral-0)', height: 'var(--jt-control-height)' }}
                 onClick={() => navigate('/login')}
               >
-                🔐 직원 로그인
+                <span className="material-symbols-rounded" style={{ fontSize: '18px', marginRight: '4px', verticalAlign: 'text-bottom' }}>lock</span> 직원 로그인
               </button>
             )}
             {/* 관리자 전용 메뉴: info 계정일 때만 노출 */}

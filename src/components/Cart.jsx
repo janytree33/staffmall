@@ -48,7 +48,7 @@ export default function Cart({ cartItems, onRemoveFromCart, onCheckout, user, qu
 
   return (
     <div className="cart-container premium-card animate-fade-in" style={{ animationDelay: '0.1s', padding: 'var(--jt-space-6)' }}>
-      <h2 style={{ color: 'var(--jt-color-text)', fontWeight: 800, margin: '0 0 var(--jt-space-5) 0', fontSize: '1.5rem' }}>장바구니</h2>
+      <h2 style={{ color: 'var(--jt-color-text)', fontWeight: 800, margin: '0 0 var(--jt-space-5) 0', fontSize: '1.2rem' }}>장바구니</h2>
       
       {cartItems.length === 0 ? (
         <div className="empty-cart">
