@@ -409,6 +409,12 @@ function Home() {
           total_price,
           status,
           created_at,
+          delivery_type,
+          delivery_name,
+          delivery_phone,
+          delivery_address,
+          delivery_address_detail,
+          delivery_memo,
           members ( name, phone_last_4_hashed ),
           order_items ( product_name, target_type, quantity, price )
         `)
@@ -991,6 +997,24 @@ function Home() {
                             {item.product_name} <span style={{ color: 'var(--jt-neutral-500)' }}>({item.target_type})</span> — <strong>{item.quantity}개</strong> <span style={{ color: 'var(--jt-neutral-400)', fontSize: '0.8rem', marginLeft: '4px' }}>{(item.price || 0).toLocaleString()}원</span>
                           </div>
                         ))}
+                      </div>
+                      
+                      {/* 배송 정보 요약 */}
+                      <div style={{ marginTop: '0.5rem', backgroundColor: 'var(--jt-neutral-50)', padding: '0.6rem', borderRadius: 'var(--jt-r-md)', border: '1px solid var(--jt-color-border)', fontSize: '0.85rem', color: 'var(--jt-color-text-secondary)', textAlign: 'left' }}>
+                        <div style={{ fontWeight: 'bold', color: 'var(--jt-color-primary)', marginBottom: '0.2rem' }}>
+                          <span className="material-symbols-rounded" style={{ fontSize: '16px', marginRight: '4px', verticalAlign: 'text-bottom' }}>
+                            {order.delivery_type === '방문수령' ? 'storefront' : 'local_shipping'}
+                          </span>
+                          {order.delivery_type || '방문수령'}
+                        </div>
+                        {order.delivery_type === '택배배송' && (
+                          <div style={{ lineHeight: '1.4' }}>
+                            <div><strong>수령인:</strong> {order.delivery_name}</div>
+                            <div><strong>연락처:</strong> {order.delivery_phone}</div>
+                            <div><strong>주소:</strong> {order.delivery_address} {order.delivery_address_detail}</div>
+                            {order.delivery_memo && <div><strong>메모:</strong> {order.delivery_memo}</div>}
+                          </div>
+                        )}
                       </div>
                     </td>
                     <td style={{ padding: '1rem 0.8rem', border: '1px solid var(--jt-color-border)', verticalAlign: 'middle', fontWeight: 'bold', color: order.status === '주문취소' ? 'var(--jt-neutral-400)' : 'var(--jt-color-text)', textDecoration: order.status === '주문취소' ? 'line-through' : 'none' }}>
