@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import { sendTelegramCancelAlert, sendEmailReceipt } from '../utils/notificationService';
@@ -39,7 +39,8 @@ export default function MyPage() {
         setUser(parsedUser);
         setLoading(false);
         fetchOrders(parsedUser.id);
-      } catch (e) {
+      } catch (error) {
+        console.error('Session loading error:', error);
         alert('로그인 정보가 손상되었습니다. 다시 로그인해주세요.');
         navigate('/login');
       }

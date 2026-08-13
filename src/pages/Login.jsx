@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 
@@ -15,6 +15,7 @@ export default function Login() {
   useEffect(() => {
     const saved = localStorage.getItem('saved_email');
     if (saved) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setEmail(saved);
       setSaveEmail(true);
     }

@@ -3,6 +3,7 @@ import Home from './pages/Home';
 import Login from './pages/Login';
 import UpdatePassword from './pages/UpdatePassword';
 import MyPage from './pages/MyPage';
+import Admin from './pages/Admin';
 
 function App() {
   return (
@@ -11,6 +12,7 @@ function App() {
       <Route path="/login" element={<Login />} />
       <Route path="/update-password" element={<UpdatePassword />} />
       <Route path="/mypage" element={<MyPage />} />
+      <Route path="/admin" element={<Admin />} />
     </Routes>
   );
 }
