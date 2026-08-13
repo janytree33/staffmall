@@ -66,6 +66,10 @@ function Home() {
   const [showOrderHistory, setShowOrderHistory] = useState(false);
   const [adminOrders, setAdminOrders] = useState([]);
 
+  // 📱 전자라벨 모달 관련 상태
+  const [showElabelModal, setShowElabelModal] = useState(false);
+  const [currentElabelUrl, setCurrentElabelUrl] = useState('');
+
   // 🔒 커스텀 비밀번호 모달 상태
   const [showPwdModal, setShowPwdModal] = useState(false);
   const [pwdInput, setPwdInput] = useState('');
@@ -629,13 +633,23 @@ function Home() {
       </header>
       <main className="home-main-layout">
         <div className="product-list-section">
-          <ProductList products={products} onAddToCart={handleAddToCart} onBatchAddToCart={handleBatchAddToCart} />
+          <ProductList 
+            products={products} 
+            onAddToCart={handleAddToCart} 
+            onBatchAddToCart={handleBatchAddToCart} 
+            user={user} 
+            openElabelModal={(url) => {
+              setCurrentElabelUrl(url || 'https://e-label-lyart.vercel.app/');
+              setShowElabelModal(true);
+            }} 
+          />
         </div>
         <div className="cart-section">
           <Cart 
             cartItems={cartItems} 
             onRemoveFromCart={handleRemoveFromCart}
             onCheckout={handleCheckoutClick}
+            user={user}
           />
         </div>
       </main>
@@ -734,6 +748,53 @@ function Home() {
               >
                 확인
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 📱 전자라벨 팝업(모바일 뷰 비율) 모달 */}
+      {showElabelModal && (
+        <div
+          onClick={() => setShowElabelModal(false)}
+          style={{
+            position: 'fixed', top: 0, left: 0, width: '100%', height: '100%',
+            backgroundColor: 'var(--jt-dim-50)',
+            backdropFilter: 'blur(4px)',
+            display: 'flex', justifyContent: 'center', alignItems: 'center',
+            zIndex: 9999
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              backgroundColor: 'var(--jt-neutral-0)',
+              width: '90%', maxWidth: '400px', // 스마트폰 폭 제한
+              height: '80vh', maxHeight: '750px',
+              borderRadius: '16px', // 스마트폰처럼 둥글게
+              boxShadow: 'var(--jt-shadow-lg)',
+              display: 'flex', flexDirection: 'column',
+              overflow: 'hidden'
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', borderBottom: '1px solid var(--jt-color-border)', backgroundColor: '#f8f9fa' }}>
+              <h3 style={{ margin: 0, fontSize: '1rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span className="material-symbols-rounded" style={{ color: 'var(--jt-color-primary)', fontSize: '1.2rem' }}>smartphone</span>
+                전자라벨 뷰어
+              </h3>
+              <button 
+                onClick={() => setShowElabelModal(false)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex' }}
+              >
+                <span className="material-symbols-rounded" style={{ color: 'var(--jt-neutral-500)' }}>close</span>
+              </button>
+            </div>
+            <div style={{ flex: 1, backgroundColor: '#fff' }}>
+              <iframe 
+                src={currentElabelUrl} 
+                style={{ width: '100%', height: '100%', border: 'none' }}
+                title="E-label Viewer"
+              />
             </div>
           </div>
         </div>

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { TARGET_TYPES } from '../utils/constants';
 import './ProductList.css'; 
 
-export default function ProductList({ products = [], onAddToCart, onBatchAddToCart }) {
+export default function ProductList({ products = [], onAddToCart, onBatchAddToCart, user, openElabelModal }) {
   // 각 상품별로 선택된 '구매 유형', '수량' 관리
   const [selections, setSelections] = useState({});
 
@@ -97,9 +97,30 @@ export default function ProductList({ products = [], onAddToCart, onBatchAddToCa
                 gap: '1rem',
                 borderBottom: '1.5px solid var(--jt-color-split)'
               }}>
-                <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: '700', wordBreak: 'keep-all', lineHeight: '1.4', flex: 1 }}>
-                  {product.name}
-                </h3>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1 }}>
+                  <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: '700', wordBreak: 'keep-all', lineHeight: '1.4' }}>
+                    {product.name}
+                  </h3>
+                  <button 
+                    onClick={() => openElabelModal && openElabelModal(product.elabel_url)}
+                    style={{
+                      background: 'var(--jt-color-primary)',
+                      border: 'none',
+                      borderRadius: '50%',
+                      width: '26px',
+                      height: '26px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: 'pointer',
+                      flexShrink: 0,
+                      boxShadow: 'var(--jt-shadow-sm)'
+                    }}
+                    title="전자라벨 팝업 보기"
+                  >
+                    <span className="material-symbols-rounded" style={{ color: 'var(--jt-neutral-0)', fontSize: '15px' }}>search</span>
+                  </button>
+                </div>
                 
                 <div style={{
                   width: '130px', height: '130px', minWidth: '130px', minHeight: '130px',
@@ -133,9 +154,28 @@ export default function ProductList({ products = [], onAddToCart, onBatchAddToCa
                   </select>
                 </div>
 
-                <div className="price-display">
-                  <span className="price-label">적용 단가:</span>
-                  <span className="price-value">{currentPrice.toLocaleString()}원</span>
+                <div className="price-display" style={{ position: 'relative' }}>
+                  {!user && (
+                    <div style={{
+                      position: 'absolute',
+                      top: 0, left: 0, width: '100%', height: '100%',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      background: 'rgba(255, 255, 255, 0.4)',
+                      backdropFilter: 'blur(3px)',
+                      zIndex: 2,
+                      borderRadius: '8px',
+                      color: 'var(--jt-color-primary)',
+                      fontWeight: 'bold',
+                      fontSize: '13px'
+                    }}>
+                      <span className="material-symbols-rounded" style={{ fontSize: '18px', marginRight: '4px' }}>lock</span>
+                      로그인 후 확인
+                    </div>
+                  )}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', filter: !user ? 'blur(4px)' : 'none' }}>
+                    <span className="price-label">적용 단가:</span>
+                    <span className="price-value">{currentPrice.toLocaleString()}원</span>
+                  </div>
                 </div>
 
                 <div className="option-group quantity-group">
@@ -168,43 +208,44 @@ export default function ProductList({ products = [], onAddToCart, onBatchAddToCa
               <button 
                 className="premium-btn add-to-cart-btn" 
                 onClick={() => onAddToCart(product, selection.targetType, selection.quantity)} 
-                disabled={selection.quantity === 0}
+                disabled={selection.quantity === 0 || !user}
                 style={{ margin: '0 1.25rem 1.25rem 1.25rem', width: 'calc(100% - 2.5rem)', height: 'var(--jt-control-height-lg)' }}
               >
-                장바구니 담기
+                {!user ? '로그인 후 이용 가능' : '장바구니 담기'}
               </button>
             </div>
           );
         })}
 
-        {/* 6번째 칸: 단가표 상단 + 하단 검정 박스 구조 고정 */}
-        <div 
-          className="price-chart-card animate-fade-in" 
-          style={{ 
-            animationDelay: '0.05s',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '1rem'
-          }}
-        >
-          <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <span className="material-symbols-rounded" style={{ fontSize: '22px', fontVariationSettings: "'FILL' 0, 'wght' 400", marginRight: '6px' }}>table_view</span> 
-            구매 대상별 단가표
-          </h3>
-          
-          {/* 단가표 테이블 */}
-          <div className="price-chart-table-container">
-            <table className="price-chart-table">
-              <thead>
-                <tr>
-                  <th colSpan="2">품목</th>
-                  <th>규격</th>
-                  <th className="th-self" style={{ whiteSpace: 'nowrap', fontSize: '0.85rem' }}>본인구매</th>
-                  <th className="th-family" style={{ whiteSpace: 'nowrap', fontSize: '0.85rem' }}>가족구매</th>
-                  <th className="th-acquaintance" style={{ whiteSpace: 'nowrap', fontSize: '0.85rem' }}>지인구매</th>
-                </tr>
-              </thead>
-              <tbody>
+        {/* 구매 대상별 단가표 (로그인 시에만 노출) */}
+        {user && (
+          <div 
+            className="price-chart-card animate-fade-in" 
+            style={{ 
+              animationDelay: '0.05s',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '1rem'
+            }}
+          >
+            <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <span className="material-symbols-rounded" style={{ fontSize: '22px', fontVariationSettings: "'FILL' 0, 'wght' 400", marginRight: '6px' }}>table_view</span> 
+              구매 대상별 단가표
+            </h3>
+            
+            {/* 단가표 테이블 */}
+            <div className="price-chart-table-container">
+              <table className="price-chart-table">
+                <thead>
+                  <tr>
+                    <th colSpan="2">품목</th>
+                    <th>규격</th>
+                    <th className="th-self" style={{ whiteSpace: 'nowrap', fontSize: '0.85rem' }}>본인구매</th>
+                    <th className="th-family" style={{ whiteSpace: 'nowrap', fontSize: '0.85rem' }}>가족구매</th>
+                    <th className="th-acquaintance" style={{ whiteSpace: 'nowrap', fontSize: '0.85rem' }}>지인구매</th>
+                  </tr>
+                </thead>
+                <tbody>
                 {products.map(p => (
                   <tr key={p.id}>
                     <td colSpan="2" className="brand-cell" style={{ textAlign: 'left', paddingLeft: '1rem', wordBreak: 'keep-all' }}>{p.name}</td>
@@ -248,25 +289,22 @@ export default function ProductList({ products = [], onAddToCart, onBatchAddToCa
               borderTop: '1px solid rgba(255, 255, 255, 0.15)', 
               paddingTop: '0.6rem', 
               marginTop: '0.4rem', 
-              fontSize: '0.85rem',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '0.3rem'
+              display: 'flex', 
+              flexDirection: 'column', 
+              gap: '0.3rem' 
             }}>
-              <div style={{ display: 'flex', alignItems: 'flex-start' }}>
-                <span className="material-symbols-rounded" style={{ fontSize: '16px', fontVariationSettings: "'FILL' 0, 'wght' 400", marginRight: '6px', marginTop: '2px', color: 'var(--jt-neutral-0)' }}>account_balance</span>
-                <span style={{ color: '#34d399', fontWeight: 'bold', whiteSpace: 'nowrap', marginRight: '4px' }}>계좌:</span>
-                <div style={{ color: 'var(--jt-neutral-0)' }}>
-                  신한은행 100-026-244778
-                </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span className="material-symbols-rounded" style={{ fontSize: '16px', color: '#fff' }}>account_balance</span>
+                <span>입금 계좌: <strong style={{ color: 'var(--jt-color-success)', letterSpacing: '0.5px' }}>신한 100-026-244778</strong> (주)제니트리</span>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center' }}>
-                <span className="material-symbols-rounded" style={{ fontSize: '16px', fontVariationSettings: "'FILL' 0, 'wght' 400", marginRight: '6px', color: 'var(--jt-neutral-0)' }}>schedule</span>
-                <span style={{ color: '#34d399', fontWeight: 'bold' }}>입금기한:</span>&nbsp;<span style={{ color: 'var(--jt-neutral-0)' }}>익일 자정까지</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span className="material-symbols-rounded" style={{ fontSize: '16px', color: '#fff' }}>event_busy</span>
+                <span>주문 후 <strong style={{ color: 'var(--jt-color-success)' }}>24시간 내 입금 미확인 시</strong> 자동 취소됩니다.</span>
               </div>
             </div>
           </div>
         </div>
+        )}
       </div>
 
       <div 

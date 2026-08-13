@@ -1,7 +1,6 @@
-
 import './Cart.css';
 
-export default function Cart({ cartItems, onRemoveFromCart, onCheckout, quoteHistory = [] }) {
+export default function Cart({ cartItems, onRemoveFromCart, onCheckout, user, quoteHistory = [] }) {
   // 장바구니 총액 계산
   const totalPrice = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
   // 장바구니 총 수량 계산
@@ -79,10 +78,12 @@ export default function Cart({ cartItems, onRemoveFromCart, onCheckout, quoteHis
                       <div key={item.cartItemId} className="cart-group-item">
                         <div className="cart-group-item-info">
                           <span className="item-name">{item.product.name}</span>
-                          <span className="item-price-qty">{item.price.toLocaleString()}원 x {item.quantity}개</span>
+                          <div className="cart-item-price-info" style={{ filter: !user ? 'blur(8px)' : 'none', userSelect: !user ? 'none' : 'auto' }}>
+                            <span className="item-price-qty">{item.price.toLocaleString()}원 x {item.quantity}개</span>
+                          </div>
                         </div>
                         <div className="cart-group-item-actions">
-                          <span className="item-subtotal">{(item.price * item.quantity).toLocaleString()}원</span>
+                          <span className="item-subtotal" style={{ filter: !user ? 'blur(8px)' : 'none', userSelect: !user ? 'none' : 'auto' }}>{(item.price * item.quantity).toLocaleString()}원</span>
                           <button 
                             className="delete-btn"
                             onClick={() => onRemoveFromCart(item.cartItemId)}
@@ -100,23 +101,45 @@ export default function Cart({ cartItems, onRemoveFromCart, onCheckout, quoteHis
           </div>
 
           <div className="cart-summary">
-            <div className="total-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem 0', borderTop: '2px solid var(--jt-color-border)' }}>
-              <span style={{ fontWeight: 700, fontSize: '1.1rem' }}>총 결제액</span>
-              <span className="total-price" style={{ color: 'var(--jt-color-accent)', fontWeight: 800, fontSize: '1.5rem' }}>{totalPrice.toLocaleString()} 원</span>
-            </div>
+            <div className="cart-footer">
+              <div style={{ position: 'relative' }}>
+                {!user && (
+                  <div style={{
+                    position: 'absolute',
+                    top: '-10px', left: '-10px', right: '-10px', bottom: '-10px',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    background: 'rgba(255, 255, 255, 0.4)',
+                    backdropFilter: 'blur(3px)',
+                    zIndex: 2,
+                    borderRadius: '8px',
+                    color: 'var(--jt-color-primary)',
+                    fontWeight: 'bold',
+                    fontSize: '15px'
+                  }}>
+                    <span className="material-symbols-rounded" style={{ fontSize: '20px', marginRight: '4px' }}>lock</span>
+                    로그인 후 가격 및 결제 가능
+                  </div>
+                )}
+                <div className="total-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem 0', borderTop: '2px solid var(--jt-color-border)', filter: !user ? 'blur(8px)' : 'none', userSelect: !user ? 'none' : 'auto' }}>
+                  <span style={{ fontWeight: 700, fontSize: '1.1rem' }}>총 결제액</span>
+                  <span className="total-price" style={{ color: 'var(--jt-color-accent)', fontWeight: 800, fontSize: '1.5rem' }}>{totalPrice.toLocaleString()} 원</span>
+                </div>
 
-            <div className="bank-account-info" style={{ margin: '1rem 0', padding: '1rem', backgroundColor: 'var(--jt-neutral-50)', borderRadius: 'var(--jt-r-md)', border: '1px solid var(--jt-color-border)', textAlign: 'center' }}>
-              <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--jt-color-text-secondary)' }}>입금 계좌 안내</p>
-              <p style={{ margin: '0.2rem 0 0 0', fontWeight: 'bold', color: 'var(--jt-color-text)' }}>신한은행 100-026-244778 (주)제니트리</p>
-            </div>
+                <div className="bank-account-info" style={{ margin: '1rem 0', padding: '1rem', backgroundColor: 'var(--jt-neutral-50)', borderRadius: 'var(--jt-r-md)', border: '1px solid var(--jt-color-border)', textAlign: 'center' }}>
+                  <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--jt-color-text-secondary)' }}>입금 계좌 안내</p>
+                  <p style={{ margin: '0.2rem 0 0 0', fontWeight: 'bold', color: 'var(--jt-color-text)' }}>신한은행 100-026-244778 (주)제니트리</p>
+                </div>
 
-            <button 
-              className="premium-btn checkout-btn"
-              style={{ width: '100%', height: 'var(--jt-control-height-lg)', fontSize: '1.1rem' }}
-              onClick={onCheckout}
-            >
-              주문하기 (총 {totalItemCount}건)
-            </button>
+                <button 
+                  className="premium-btn checkout-btn"
+                  style={{ width: '100%', height: 'var(--jt-control-height-lg)', fontSize: '1.1rem', filter: !user ? 'blur(2px)' : 'none' }}
+                  onClick={onCheckout}
+                  disabled={!user}
+                >
+                  주문하기 (총 {totalItemCount}건)
+                </button>
+              </div>
+            </div>
           </div>
         </>
       )}
