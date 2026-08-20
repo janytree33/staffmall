@@ -153,16 +153,9 @@ export default function ProductList({ products = [], onAddToCart, onBatchAddToCa
                     <button 
                       onClick={() => {
                         const originalUrl = product.detail_image_url || `/details/[상세페이지] ${product.name}.jpg`;
-                        
-                        // 모바일(화면 폭 768px 이하)
-                        if (window.innerWidth <= 768) {
-                          window.open(originalUrl, '_blank');
-                        } else {
-                          // PC 모달
-                          // 구글 드라이브 주소면 다이렉트로 변환(thumbnail API), 로컬 주소면 그대로 사용
-                          const modalUrl = product.detail_image_url ? getDirectImageUrl(originalUrl) : originalUrl;
-                          setDetailImageUrl(modalUrl);
-                        }
+                        // PC, 모바일 공통: 무조건 팝업 모달로 띄움 (구글 주소면 썸네일 API 변환)
+                        const modalUrl = product.detail_image_url ? getDirectImageUrl(originalUrl) : originalUrl;
+                        setDetailImageUrl(modalUrl);
                       }}
                       style={{
                         background: 'var(--jt-neutral-400)', // 사용자가 요청한 회색 배경
