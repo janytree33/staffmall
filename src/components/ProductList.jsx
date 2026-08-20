@@ -1,10 +1,14 @@
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { TARGET_TYPES } from '../utils/constants';
 import './ProductList.css'; 
 
 export default function ProductList({ products = [], onAddToCart, onBatchAddToCart, user, openElabelModal }) {
   // 각 상품별로 선택된 '구매 유형', '수량' 관리
   const [selections, setSelections] = useState({});
+  // 상세페이지 이미지 모달 상태
+  const [detailImageUrl, setDetailImageUrl] = useState(null);
+  const [zoomLevel, setZoomLevel] = useState(100);
 
   useEffect(() => {
     // eslint-disable-next-line
@@ -16,6 +20,18 @@ export default function ProductList({ products = [], onAddToCart, onBatchAddToCa
       return newSel;
     });
   }, [products]);
+
+  // 팝업이 열려있을 때 뒷배경 스크롤 방지
+  useEffect(() => {
+    if (detailImageUrl) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [detailImageUrl]);
 
   const handleTargetChange = (productId, newTargetType) => {
     setSelections(prev => ({
@@ -97,29 +113,60 @@ export default function ProductList({ products = [], onAddToCart, onBatchAddToCa
                 gap: '1rem',
                 borderBottom: '1.5px solid var(--jt-color-split)'
               }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, flexWrap: 'wrap' }}>
                   <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: '700', wordBreak: 'keep-all', lineHeight: '1.4' }}>
                     {product.name}
                   </h3>
-                  <button 
-                    onClick={() => openElabelModal && openElabelModal(product.elabel_url)}
-                    style={{
-                      background: 'var(--jt-color-primary)',
-                      border: 'none',
-                      borderRadius: '50%',
-                      width: '26px',
-                      height: '26px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      cursor: 'pointer',
-                      flexShrink: 0,
-                      boxShadow: 'var(--jt-shadow-sm)'
-                    }}
-                    title="전자라벨 팝업 보기"
-                  >
-                    <span className="material-symbols-rounded" style={{ color: 'var(--jt-neutral-0)', fontSize: '15px' }}>search</span>
-                  </button>
+                  <div style={{ display: 'flex', gap: '6px' }}>
+                    <button 
+                      onClick={() => openElabelModal && openElabelModal(product.elabel_url)}
+                      style={{
+                        background: 'var(--jt-color-primary)',
+                        border: 'none',
+                        borderRadius: '50%',
+                        width: '26px',
+                        height: '26px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: 'pointer',
+                        flexShrink: 0,
+                        boxShadow: 'var(--jt-shadow-sm)'
+                      }}
+                      title="전자라벨 팝업 보기"
+                    >
+                      <span className="material-symbols-rounded" style={{ color: 'var(--jt-neutral-0)', fontSize: '15px' }}>search</span>
+                    </button>
+
+                    <button 
+                      onClick={() => {
+                        const imageUrl = `/details/[상세페이지] ${product.name}.jpg`;
+                        // 모바일(화면 폭 768px 이하)에서는 스마트폰 기본 그림 뷰어(새 탭)로 띄워 핀치줌 완벽 지원
+                        if (window.innerWidth <= 768) {
+                          window.open(imageUrl, '_blank');
+                        } else {
+                          // PC에서는 예쁜 모달 팝업 띄우기
+                          setDetailImageUrl(imageUrl);
+                        }
+                      }}
+                      style={{
+                        background: 'var(--jt-neutral-400)', // 사용자가 요청한 회색 배경
+                        border: 'none',
+                        borderRadius: '50%',
+                        width: '26px',
+                        height: '26px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: 'pointer',
+                        flexShrink: 0,
+                        boxShadow: 'var(--jt-shadow-sm)'
+                      }}
+                      title="상세페이지 이미지 보기"
+                    >
+                      <span className="material-symbols-rounded" style={{ color: 'var(--jt-neutral-0)', fontSize: '15px' }}>image</span>
+                    </button>
+                  </div>
                 </div>
                 
                 <div style={{
@@ -343,6 +390,73 @@ export default function ProductList({ products = [], onAddToCart, onBatchAddToCa
           선택한 {selectedKindCount}종 상품 장바구니에 일괄 담기
         </button>
       </div>
+      
+      {/* 상세페이지 팝업 모달 */}
+      {detailImageUrl && createPortal(
+        <div 
+          className="modal-overlay animate-fade-in" 
+          onClick={() => { setDetailImageUrl(null); setZoomLevel(100); }}
+          style={{
+            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+            backgroundColor: 'rgba(0,0,0,0.4)', // 너무 시커멓지 않게 밝게 조절
+            display: 'flex', justifyContent: 'center', alignItems: 'flex-start',
+            zIndex: 999999, // z-index 대폭 강화
+            padding: '6vh 16px', // 화면 중앙보단 약간 상단에 위치하도록 조절
+            overflowY: 'auto' 
+          }}
+        >
+          <div 
+            className="modal-content premium-card"
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              width: '100%', 
+              maxWidth: `${9.4 * zoomLevel}px`, // 100%일 때 약 940px (방금 전의 125% 크기를 100%로)
+              backgroundColor: '#fff', borderRadius: '16px',
+              display: 'flex', flexDirection: 'column',
+              position: 'relative', boxShadow: '0 20px 40px rgba(0,0,0,0.3)',
+              transition: 'max-width 0.2s ease-out'
+            }}
+          >
+            <div style={{ position: 'sticky', top: 0, padding: '12px 20px', borderBottom: '1px solid #eee', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#fff', zIndex: 10, borderRadius: '16px 16px 0 0' }}>
+              <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 700, color: 'var(--jt-color-text)' }}>제품 상세페이지</h3>
+              
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', backgroundColor: 'var(--jt-neutral-50)', padding: '4px 6px', borderRadius: 'var(--jt-r-md)' }}>
+                  <button 
+                    onClick={() => setZoomLevel(prev => Math.max(50, prev - 25))}
+                    style={{ border: 'none', background: 'var(--jt-neutral-0)', cursor: 'pointer', fontSize: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '28px', height: '28px', borderRadius: '4px', boxShadow: '0 1px 2px rgba(0,0,0,0.1)' }}
+                    title="축소"
+                  >
+                    <span className="material-symbols-rounded" style={{ fontSize: '18px' }}>remove</span>
+                  </button>
+                  <span style={{ fontSize: '0.85rem', fontWeight: 'bold', width: '45px', textAlign: 'center', color: 'var(--jt-color-text)' }}>{zoomLevel}%</span>
+                  <button 
+                    onClick={() => setZoomLevel(prev => Math.min(300, prev + 25))}
+                    style={{ border: 'none', background: 'var(--jt-neutral-0)', cursor: 'pointer', fontSize: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '28px', height: '28px', borderRadius: '4px', boxShadow: '0 1px 2px rgba(0,0,0,0.1)' }}
+                    title="확대"
+                  >
+                    <span className="material-symbols-rounded" style={{ fontSize: '18px' }}>add</span>
+                  </button>
+                </div>
+
+                <button 
+                  onClick={() => { setDetailImageUrl(null); setZoomLevel(100); }} 
+                  style={{ background: 'none', border: 'none', fontSize: '28px', cursor: 'pointer', color: 'var(--jt-color-text)', lineHeight: 1, padding: '0 4px' }}
+                  title="닫기"
+                >
+                  &times;
+                </button>
+              </div>
+            </div>
+            {/* 모달 창 크기에 맞춰서 이미지는 100%로 렌더링 */}
+            <div style={{ backgroundColor: '#f9fafb', padding: 0 }}>
+              <img src={detailImageUrl} alt="상세페이지" style={{ width: '100%', height: 'auto', display: 'block' }} />
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
     </div>
   );
 }
