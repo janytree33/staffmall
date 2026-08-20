@@ -20,6 +20,11 @@ export default function AdminPanel({ members, products }) {
   // 숨겨진 파일 인풋 참조
   const fileInputRef = useRef(null);
   const [uploadingProductId, setUploadingProductId] = useState(null);
+  const [uploadingDetailProductId, setUploadingDetailProductId] = useState(null);
+  
+  // 구글 드라이브 URL 입력 모달 상태
+  const [showUrlModal, setShowUrlModal] = useState(false);
+  const [urlInput, setUrlInput] = useState('');
 
   // ===== [주문 내역 끊김 복구(동기화) 로직] =====
   const handleRecoverOrders = async () => {
@@ -160,7 +165,43 @@ export default function AdminPanel({ members, products }) {
     }
   };
 
-  // 실제 사진 업로드 처리 (Supabase Storage)
+  // 구글 드라이브 상세페이지 링크 등록 버튼 클릭
+  const handleDetailUploadClick = (productId) => {
+    setUploadingDetailProductId(productId);
+    const product = products.find(p => p.id === productId);
+    setUrlInput(product?.detail_image_url || '');
+    setShowUrlModal(true);
+  };
+
+  // 구글 드라이브 URL 저장 (DB Update)
+  const handleSaveDetailUrl = async () => {
+    if (!uploadingDetailProductId) return;
+    if (!urlInput.trim()) {
+      alert("구글 드라이브 링크를 입력칸 안에 붙여넣어 주세요!");
+      return;
+    }
+
+    try {
+      const { error: updateError } = await supabase
+        .from('products')
+        .update({ detail_image_url: urlInput.trim() })
+        .eq('id', uploadingDetailProductId);
+
+      if (updateError) throw updateError;
+      
+      alert("구글 드라이브 상세페이지 링크가 성공적으로 등록되었습니다!");
+      setShowUrlModal(false);
+      setUrlInput('');
+      setUploadingDetailProductId(null);
+      // 저장 후 관리자 화면의 기존 데이터를 최신화하기 위해 화면 새로고침
+      window.location.reload();
+    } catch (error) {
+      console.error(error);
+      alert("링크 등록 중 오류가 발생했습니다.");
+    }
+  };
+
+  // 실제 썸네일 사진 업로드 처리 (Supabase Storage)
   const handleFileChange = async (e) => {
     const file = e.target.files[0];
     if (!file || !uploadingProductId) return;
@@ -318,8 +359,11 @@ export default function AdminPanel({ members, products }) {
                 </div>
 
                 <div className="item-actions">
-                  <button className="btn-upload" onClick={() => handleUploadClick(p.id)}>
-                    <span className="material-symbols-rounded" style={{ fontSize: '16px', marginRight: '4px', verticalAlign: 'text-bottom' }}>image</span> 사진변경
+                  <button className="btn-upload" onClick={() => handleUploadClick(p.id)} title="썸네일 300x300 권장">
+                    <span className="material-symbols-rounded" style={{ fontSize: '16px', marginRight: '4px', verticalAlign: 'text-bottom' }}>image</span> 썸네일변경
+                  </button>
+                  <button className="btn-upload" onClick={() => handleDetailUploadClick(p.id)} style={{ backgroundColor: 'var(--jt-color-primary)', color: 'white', border: 'none' }} title="구글 드라이브 공유 링크 등록">
+                    <span className="material-symbols-rounded" style={{ fontSize: '16px', marginRight: '4px', verticalAlign: 'text-bottom' }}>link</span> 구글 드라이브 링크
                   </button>
                   <button className="btn-icon btn-delete" onClick={() => handleDeleteProduct(p.id)}>
                     ✕
@@ -341,6 +385,54 @@ export default function AdminPanel({ members, products }) {
         onChange={handleFileChange}
       />
       
+      {/* 구글 드라이브 링크 입력 모달 (JT 디자인 시스템 준수 모달) */}
+      {showUrlModal && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: 'rgba(15, 23, 42, 0.6)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          zIndex: 9999, padding: '1rem'
+        }}>
+          <div style={{
+            backgroundColor: 'var(--jt-bg-container)', 
+            padding: '2rem', borderRadius: 'var(--jt-r-lg)',
+            width: '100%', maxWidth: '500px',
+            boxShadow: 'var(--jt-shadow-3)'
+          }}>
+            <h3 style={{ marginTop: 0, marginBottom: '0.5rem', color: 'var(--jt-color-primary)', fontSize: '1.25rem' }}>구글 드라이브 링크 등록</h3>
+            <p style={{ color: 'var(--jt-color-text-secondary)', fontSize: '0.9rem', marginBottom: '1.5rem', lineHeight: '1.5' }}>
+              구글 드라이브에서 이미지를 <strong>"링크가 있는 모든 사용자 보기 가능"</strong>으로 설정한 후, 복사한 링크를 아래에 붙여넣어 주세요.
+            </p>
+            <input 
+              type="text" 
+              value={urlInput} 
+              onChange={e => setUrlInput(e.target.value)}
+              placeholder="예: https://drive.google.com/file/d/1A2B3C.../view?usp=sharing"
+              style={{
+                width: '100%', padding: '0.8rem', borderRadius: 'var(--jt-r-md)',
+                border: '1px solid var(--jt-color-border)', marginBottom: '1.5rem',
+                fontSize: '0.95rem', boxSizing: 'border-box'
+              }}
+            />
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+              <button 
+                onClick={() => {
+                  setShowUrlModal(false);
+                  setUrlInput('');
+                  setUploadingDetailProductId(null);
+                }} 
+                className="premium-btn outline"
+              >
+                취소
+              </button>
+              <button onClick={handleSaveDetailUrl} className="premium-btn" style={{ backgroundColor: 'var(--jt-color-primary)', color: 'white' }}>
+                저장하기
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div style={{ marginTop: '1.5rem', backgroundColor: '#ecfdf5', padding: '1rem', borderRadius: '8px', color: '#065f46', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
         <span className="material-symbols-rounded" style={{ fontSize: '20px', color: '#059669' }}>cloud</span> <strong>Supabase 실시간 DB 안내:</strong> 관리자가 위에서 등록/수정/삭제한 데이터는 즉각적으로 Supabase에 반영되며, 모든 사용자의 쇼핑몰 화면이 새로고침 없이 최신 상태로 바뀝니다.
       </div>

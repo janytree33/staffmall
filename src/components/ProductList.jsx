@@ -21,6 +21,18 @@ export default function ProductList({ products = [], onAddToCart, onBatchAddToCa
     });
   }, [products]);
 
+  // 구글 드라이브 링크를 이미지 태그(<img>) 렌더링용 다이렉트 링크로 변환하는 마법 함수
+  const getDirectImageUrl = (url) => {
+    if (!url) return null;
+    if (url.includes('drive.google.com/file/d/')) {
+      const match = url.match(/file\/d\/([a-zA-Z0-9_-]+)/);
+      if (match && match[1]) {
+        return `https://drive.google.com/thumbnail?id=${match[1]}&sz=w2000`;
+      }
+    }
+    return url;
+  };
+
   // 팝업이 열려있을 때 뒷배경 스크롤 방지
   useEffect(() => {
     if (detailImageUrl) {
@@ -140,13 +152,16 @@ export default function ProductList({ products = [], onAddToCart, onBatchAddToCa
 
                     <button 
                       onClick={() => {
-                        const imageUrl = `/details/[상세페이지] ${product.name}.jpg`;
-                        // 모바일(화면 폭 768px 이하)에서는 스마트폰 기본 그림 뷰어(새 탭)로 띄워 핀치줌 완벽 지원
+                        const originalUrl = product.detail_image_url || `/details/[상세페이지] ${product.name}.jpg`;
+                        
+                        // 모바일(화면 폭 768px 이하)
                         if (window.innerWidth <= 768) {
-                          window.open(imageUrl, '_blank');
+                          window.open(originalUrl, '_blank');
                         } else {
-                          // PC에서는 예쁜 모달 팝업 띄우기
-                          setDetailImageUrl(imageUrl);
+                          // PC 모달
+                          // 구글 드라이브 주소면 다이렉트로 변환(thumbnail API), 로컬 주소면 그대로 사용
+                          const modalUrl = product.detail_image_url ? getDirectImageUrl(originalUrl) : originalUrl;
+                          setDetailImageUrl(modalUrl);
                         }
                       }}
                       style={{
