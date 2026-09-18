@@ -22,6 +22,12 @@ export default function MyPage() {
   const [loadingOrders, setLoadingOrders] = useState(true);
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [targetOrderId, setTargetOrderId] = useState(null);
+
+  // 배송지 수정 모달 상태
+  // editingDelivery: { id(UUID), seq_no, name, phone, zipcode, address, addressDetail, memo }
+  const [editingDelivery, setEditingDelivery] = useState(null);
+  const [isSavingDelivery, setIsSavingDelivery] = useState(false);
+
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -65,7 +71,7 @@ export default function MyPage() {
             delivery_memo,
             cash_receipt_phone,
             order_items ( product_name, target_type, quantity, price ),
-            order_deliveries ( seq_no, recipient_name, phone, zipcode, address, address_detail, memo, assigned_items )
+            order_deliveries ( id, seq_no, recipient_name, phone, zipcode, address, address_detail, memo, assigned_items )
           `)
           .eq('member_id', userId)
           .order('created_at', { ascending: false });
@@ -86,6 +92,79 @@ export default function MyPage() {
     localStorage.removeItem('custom_user');
     window.dispatchEvent(new Event('storage')); // Home.jsx 등에 로그아웃 이벤트 알림
     navigate('/');
+  };
+
+  // 배송지 수정 모달 열기
+  const openEditDelivery = (delivery) => {
+    setEditingDelivery({
+      id: delivery.id,
+      seq_no: delivery.seq_no,
+      name: delivery.recipient_name || '',
+      phone: delivery.phone || '',
+      zipcode: delivery.zipcode || '',
+      address: delivery.address || '',
+      addressDetail: delivery.address_detail || '',
+      memo: delivery.memo || ''
+    });
+  };
+
+  // 배송지 수정 저장 (Supabase UPDATE)
+  const handleSaveDelivery = async () => {
+    if (!editingDelivery) return;
+    const d = editingDelivery;
+    if (!d.name.trim() || !d.phone.trim() || !d.address.trim()) {
+      alert('수령인, 연락처, 주소는 필수 항목입니다.');
+      return;
+    }
+    setIsSavingDelivery(true);
+    try {
+      const { error } = await supabase
+        .from('order_deliveries')
+        .update({
+          recipient_name: d.name,
+          phone: d.phone,
+          zipcode: d.zipcode,
+          address: d.address,
+          address_detail: d.addressDetail,
+          memo: d.memo
+        })
+        .eq('id', d.id);
+
+      if (error) throw error;
+
+      // 화면의 orders 상태를 직접 업데이트 (새로 fetch 없이)
+      setOrders(prev => prev.map(order => ({
+        ...order,
+        order_deliveries: order.order_deliveries
+          ? order.order_deliveries.map(od =>
+              od.id === d.id
+                ? { ...od, recipient_name: d.name, phone: d.phone, zipcode: d.zipcode, address: d.address, address_detail: d.addressDetail, memo: d.memo }
+                : od
+            )
+          : order.order_deliveries
+      })));
+
+      setEditingDelivery(null);
+    } catch (err) {
+      console.error('배송지 수정 실패:', err);
+      alert('배송지 수정 중 오류가 발생했습니다.');
+    } finally {
+      setIsSavingDelivery(false);
+    }
+  };
+
+  // 수정 모달에서 우편번호 검색
+  const handleEditPostcodeSearch = () => {
+    if (window.daum && window.daum.Postcode) {
+      new window.daum.Postcode({
+        oncomplete: function(data) {
+          const addr = data.userSelectedType === 'R' ? data.roadAddress : data.jibunAddress;
+          setEditingDelivery(prev => ({ ...prev, zipcode: data.zonecode, address: addr }));
+        }
+      }).open();
+    } else {
+      alert('우편번호 서비스를 불러올 수 없습니다.');
+    }
   };
 
   const openCancelModal = (orderId) => {
@@ -292,8 +371,19 @@ export default function MyPage() {
                           <div style={{ marginTop: 'var(--jt-space-2)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                             {deliveries.map((d, i) => (
                               <div key={i} style={{ fontSize: '12px', color: 'var(--jt-color-text-secondary)', borderLeft: '2px solid var(--jt-color-primary)', paddingLeft: '8px' }}>
-                                <div style={{ fontWeight: 'bold', color: 'var(--jt-color-primary)', marginBottom: '2px' }}>
-                                  배송지 {d.seq_no}
+                                {/* 배송지 헤더: 번호 + 수정 버튼 */}
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2px' }}>
+                                  <span style={{ fontWeight: 'bold', color: 'var(--jt-color-primary)' }}>배송지 {d.seq_no}</span>
+                                  {/* 입금대기 상태일 때만 수정 버튼 표시 */}
+                                  {order.status === '입금대기' && (
+                                    <button
+                                      onClick={() => openEditDelivery(d)}
+                                      style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '2px', color: 'var(--jt-color-text-secondary)', fontSize: '11px', padding: '0 2px' }}
+                                    >
+                                      <span className="material-symbols-rounded" style={{ fontSize: '14px' }}>edit</span>
+                                      수정
+                                    </button>
+                                  )}
                                 </div>
                                 <div><span style={{ fontWeight: 'bold' }}>수령인:</span> {d.recipient_name} ({formatPhoneNumber(d.phone)})</div>
                                 <div><span style={{ fontWeight: 'bold' }}>주소:</span> {d.address} {d.address_detail}</div>
@@ -374,6 +464,88 @@ export default function MyPage() {
           )}
         </div>
       </div>
+
+      {/* ✏️ 배송지 수정 모달 */}
+      {editingDelivery && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, width: '100%', height: '100%',
+          backgroundColor: 'var(--jt-dim-50)', backdropFilter: 'blur(4px)',
+          display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 9999
+        }}>
+          <div className="card animate-fade-in" style={{
+            width: '90%', maxWidth: '460px', backgroundColor: 'var(--jt-neutral-0)',
+            padding: 'var(--jt-space-7)', borderRadius: 'var(--jt-r-xl)',
+            boxShadow: 'var(--jt-shadow-2xl)', maxHeight: '90vh', overflowY: 'auto'
+          }}>
+            {/* 헤더 */}
+            <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
+              <span className="material-symbols-rounded" style={{ fontSize: '2.5rem', color: 'var(--jt-color-primary)' }}>edit_location_alt</span>
+              <h2 style={{ fontSize: '1.1rem', fontWeight: '800', color: 'var(--jt-color-text)', margin: '0.3rem 0 0' }}>
+                배송지 {editingDelivery.seq_no} 수정
+              </h2>
+            </div>
+
+            {/* 수령인 */}
+            <div style={{ marginBottom: '0.75rem' }}>
+              <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '600', marginBottom: '0.3rem' }}>수령인 *</label>
+              <input type="text" value={editingDelivery.name}
+                onChange={e => setEditingDelivery(prev => ({ ...prev, name: e.target.value }))}
+                style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid var(--jt-color-border)', boxSizing: 'border-box' }} />
+            </div>
+
+            {/* 연락처 */}
+            <div style={{ marginBottom: '0.75rem' }}>
+              <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '600', marginBottom: '0.3rem' }}>
+                연락처 * <span style={{ color: 'var(--jt-color-text-tertiary)', fontWeight: 'normal', fontSize: '0.78rem' }}>(숫자만)</span>
+              </label>
+              <input type="text" value={editingDelivery.phone} maxLength="13"
+                onChange={e => setEditingDelivery(prev => ({ ...prev, phone: formatPhoneNumber(e.target.value) }))}
+                placeholder="010-0000-0000"
+                style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid var(--jt-color-border)', boxSizing: 'border-box' }} />
+            </div>
+
+            {/* 주소 */}
+            <div style={{ marginBottom: '0.75rem' }}>
+              <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '600', marginBottom: '0.3rem' }}>주소 *</label>
+              <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.4rem' }}>
+                <input type="text" value={editingDelivery.zipcode} readOnly placeholder="우편번호"
+                  style={{ flex: 1, padding: '0.5rem', borderRadius: '6px', border: '1px solid var(--jt-color-border)', backgroundColor: '#f9f9f9' }} />
+                <button type="button" onClick={handleEditPostcodeSearch}
+                  style={{ padding: '0.5rem 0.9rem', borderRadius: '6px', border: '1px solid var(--jt-color-primary)', backgroundColor: 'var(--jt-neutral-0)', color: 'var(--jt-color-primary)', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                  주소 찾기
+                </button>
+              </div>
+              <input type="text" value={editingDelivery.address} readOnly placeholder="기본 주소"
+                style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid var(--jt-color-border)', marginBottom: '0.4rem', backgroundColor: '#f9f9f9', boxSizing: 'border-box' }} />
+              <input type="text" value={editingDelivery.addressDetail}
+                onChange={e => setEditingDelivery(prev => ({ ...prev, addressDetail: e.target.value }))}
+                placeholder="상세 주소"
+                style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid var(--jt-color-border)', boxSizing: 'border-box' }} />
+            </div>
+
+            {/* 배송 요청사항 */}
+            <div style={{ marginBottom: '1.5rem' }}>
+              <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '600', marginBottom: '0.3rem' }}>배송 요청사항</label>
+              <input type="text" value={editingDelivery.memo}
+                onChange={e => setEditingDelivery(prev => ({ ...prev, memo: e.target.value }))}
+                placeholder="문 앞에 놓아주세요"
+                style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid var(--jt-color-border)', boxSizing: 'border-box' }} />
+            </div>
+
+            {/* 버튼 */}
+            <div style={{ display: 'flex', gap: '0.75rem' }}>
+              <button onClick={() => setEditingDelivery(null)}
+                style={{ flex: 1, padding: 'var(--jt-space-4)', borderRadius: 'var(--jt-r-md)', border: '1px solid var(--jt-color-border)', background: 'var(--jt-neutral-0)', color: 'var(--jt-neutral-700)', fontWeight: '700', cursor: 'pointer' }}>
+                취소
+              </button>
+              <button onClick={handleSaveDelivery} disabled={isSavingDelivery}
+                style={{ flex: 1, padding: 'var(--jt-space-4)', borderRadius: 'var(--jt-r-md)', border: 'none', background: 'var(--jt-color-primary)', color: 'white', fontWeight: '700', cursor: 'pointer', opacity: isSavingDelivery ? 0.7 : 1 }}>
+                {isSavingDelivery ? '저장 중...' : '저장'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 🛑 주문 취소 모달 */}
       {showCancelModal && (
