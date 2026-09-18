@@ -54,6 +54,7 @@ export default function MyPage() {
           .select(`
             id,
             total_price,
+            delivery_fee_total,
             status,
             created_at,
             delivery_type,
@@ -63,7 +64,8 @@ export default function MyPage() {
             delivery_address_detail,
             delivery_memo,
             cash_receipt_phone,
-            order_items ( product_name, target_type, quantity, price )
+            order_items ( product_name, target_type, quantity, price ),
+            order_deliveries ( seq_no, recipient_name, phone, zipcode, address, address_detail, memo, assigned_items )
           `)
           .eq('member_id', userId)
           .order('created_at', { ascending: false });
@@ -277,13 +279,46 @@ export default function MyPage() {
                         </div>
                       )}
                     </div>
-                    {order.delivery_type === '택배배송' && (
-                      <div style={{ marginTop: 'var(--jt-space-2)', fontSize: '12px', color: 'var(--jt-color-text-secondary)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                        <div><span style={{ fontWeight: 'bold' }}>수령인:</span> {order.delivery_name} ({formatPhoneNumber(order.delivery_phone)})</div>
-                        <div><span style={{ fontWeight: 'bold' }}>배송지:</span> {order.delivery_address} {order.delivery_address_detail}</div>
-                        {order.delivery_memo && <div><span style={{ fontWeight: 'bold' }}>요청사항:</span> {order.delivery_memo}</div>}
-                      </div>
-                    )}
+
+                    {/* 택배 배송이면 order_deliveries 테이블 기준 전체 배송지 표시 */}
+                    {order.delivery_type === '택배배송' && (() => {
+                      // order_deliveries가 있으면 신규 방식, 없으면 기존 단일 배송지 방식
+                      const deliveries = order.order_deliveries && order.order_deliveries.length > 0
+                        ? [...order.order_deliveries].sort((a, b) => a.seq_no - b.seq_no)
+                        : null;
+
+                      if (deliveries) {
+                        return (
+                          <div style={{ marginTop: 'var(--jt-space-2)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                            {deliveries.map((d, i) => (
+                              <div key={i} style={{ fontSize: '12px', color: 'var(--jt-color-text-secondary)', borderLeft: '2px solid var(--jt-color-primary)', paddingLeft: '8px' }}>
+                                <div style={{ fontWeight: 'bold', color: 'var(--jt-color-primary)', marginBottom: '2px' }}>
+                                  배송지 {d.seq_no}
+                                </div>
+                                <div><span style={{ fontWeight: 'bold' }}>수령인:</span> {d.recipient_name} ({formatPhoneNumber(d.phone)})</div>
+                                <div><span style={{ fontWeight: 'bold' }}>주소:</span> {d.address} {d.address_detail}</div>
+                                {d.memo && <div><span style={{ fontWeight: 'bold' }}>요청사항:</span> {d.memo}</div>}
+                                {/* 이 배송지로 가는 상품 목록 */}
+                                {d.assigned_items && d.assigned_items.length > 0 && (
+                                  <div style={{ marginTop: '2px', color: 'var(--jt-color-text-tertiary)' }}>
+                                    → {d.assigned_items.map(ai => `${ai.product_name} ${ai.quantity}개`).join(', ')}
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        );
+                      } else {
+                        // 기존 단일 배송지 방식 (이전 주문 호환)
+                        return (
+                          <div style={{ marginTop: 'var(--jt-space-2)', fontSize: '12px', color: 'var(--jt-color-text-secondary)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                            <div><span style={{ fontWeight: 'bold' }}>수령인:</span> {order.delivery_name} ({formatPhoneNumber(order.delivery_phone)})</div>
+                            <div><span style={{ fontWeight: 'bold' }}>배송지:</span> {order.delivery_address} {order.delivery_address_detail}</div>
+                            {order.delivery_memo && <div><span style={{ fontWeight: 'bold' }}>요청사항:</span> {order.delivery_memo}</div>}
+                          </div>
+                        );
+                      }
+                    })()}
                   </div>
 
                   <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 'var(--jt-space-2)' }}>
@@ -319,9 +354,18 @@ export default function MyPage() {
                     ) : (
                       <div></div>
                     )}
-                    <div>
-                      <span style={{ fontSize: '13px', color: 'var(--jt-color-text-secondary)', marginRight: 'var(--jt-space-2)' }}>총 결제 금액:</span>
-                      <span style={{ fontSize: '16px', fontWeight: 700, color: 'var(--jt-color-text)' }}>{order.total_price?.toLocaleString()}원</span>
+                    <div style={{ textAlign: 'right' }}>
+                      {/* 택배비가 있으면 상품금액/택배비 분리 표시 */}
+                      {order.delivery_fee_total > 0 && (
+                        <div style={{ fontSize: '12px', color: 'var(--jt-color-text-tertiary)', marginBottom: '2px' }}>
+                          상품 {(order.total_price - order.delivery_fee_total).toLocaleString()}원
+                          + 택배비 {order.delivery_fee_total.toLocaleString()}원
+                        </div>
+                      )}
+                      <div>
+                        <span style={{ fontSize: '13px', color: 'var(--jt-color-text-secondary)', marginRight: 'var(--jt-space-2)' }}>총 결제 금액:</span>
+                        <span style={{ fontSize: '16px', fontWeight: 700, color: 'var(--jt-color-text)' }}>{order.total_price?.toLocaleString()}원</span>
+                      </div>
                     </div>
                   </div>
                 </div>

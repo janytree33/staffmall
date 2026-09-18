@@ -22,12 +22,22 @@ function Home() {
 
   // 배송 및 결제 폼 상태
   const [deliveryType, setDeliveryType] = useState('방문수령');
-  const [deliveryName, setDeliveryName] = useState('');
-  const [deliveryPhone, setDeliveryPhone] = useState('');
-  const [deliveryZipcode, setDeliveryZipcode] = useState('');
-  const [deliveryAddress, setDeliveryAddress] = useState('');
-  const [deliveryAddressDetail, setDeliveryAddressDetail] = useState('');
-  const [deliveryMemo, setDeliveryMemo] = useState('');
+
+  // 📦 다중 배송지 상태 (택배배송 선택 시 사용)
+  // 배송지 1개당 객체 1개. 초기값은 빈 배송지 1개.
+  const makeEmptyDelivery = () => ({
+    id: Date.now().toString() + Math.random().toString(36).substr(2, 5),
+    name: '',
+    phone: '',
+    zipcode: '',
+    address: '',
+    addressDetail: '',
+    memo: '',
+    // 이 배송지에 할당된 상품: { [cartItemId]: 수량 }
+    assignedQty: {}
+  });
+  const [deliveries, setDeliveries] = useState([makeEmptyDelivery()]);
+
   const [cashReceiptPhone, setCashReceiptPhone] = useState('');
   const [cashReceiptType, setCashReceiptType] = useState('소득공제'); // '소득공제' or '지출증빙'
 
@@ -126,28 +136,48 @@ function Home() {
       navigate('/login');
       return;
     }
-    // 모달 초기화
+    // 모달 초기화: 배송지 1개 (빈 상태), 현금영수증 초기화
     setDeliveryType('방문수령');
-    setDeliveryName(user.name || '');
-    setDeliveryPhone('');
-    setDeliveryZipcode('');
-    setDeliveryAddress('');
-    setDeliveryAddressDetail('');
-    setDeliveryMemo('');
+    setDeliveries([makeEmptyDelivery()]);
     setCashReceiptPhone('');
     setCashReceiptType('소득공제');
     
     setShowAuthModal(true);
   };
 
-  // 다음 우편번호 검색 API 호출
-  const handlePostcodeSearch = () => {
+  // 배송지 필드 업데이트 헬퍼 (deliveryIdx: 몇 번째 배송지인지)
+  const updateDelivery = (deliveryIdx, field, value) => {
+    setDeliveries(prev => prev.map((d, i) => i === deliveryIdx ? { ...d, [field]: value } : d));
+  };
+
+  // 배송지 추가 버튼
+  const addDelivery = () => {
+    setDeliveries(prev => [...prev, makeEmptyDelivery()]);
+  };
+
+  // 배송지 삭제 버튼
+  const removeDelivery = (deliveryIdx) => {
+    setDeliveries(prev => prev.filter((_, i) => i !== deliveryIdx));
+  };
+
+  // 배송지별 상품 수량 할당 변경
+  const updateAssignedQty = (deliveryIdx, cartItemId, value) => {
+    const qty = Math.max(0, parseInt(value) || 0);
+    setDeliveries(prev => prev.map((d, i) =>
+      i === deliveryIdx
+        ? { ...d, assignedQty: { ...d.assignedQty, [cartItemId]: qty } }
+        : d
+    ));
+  };
+
+  // 다음 우편번호 검색 API 호출 (deliveryIdx: 몇 번째 배송지의 주소인지)
+  const handlePostcodeSearch = (deliveryIdx) => {
     if (window.daum && window.daum.Postcode) {
       new window.daum.Postcode({
         oncomplete: function(data) {
           let addr = data.userSelectedType === 'R' ? data.roadAddress : data.jibunAddress;
-          setDeliveryZipcode(data.zonecode);
-          setDeliveryAddress(addr);
+          updateDelivery(deliveryIdx, 'zipcode', data.zonecode);
+          updateDelivery(deliveryIdx, 'address', addr);
         }
       }).open();
     } else {
@@ -155,24 +185,45 @@ function Home() {
     }
   };
 
+
   // 🚀 실제 주문을 데이터베이스에 등록하고 한도를 검증하는 핵심 함수
   const processOrder = async () => {
     if (!user) return;
     setIsProcessing(true);
 
     try {
+      // ── 택배 배송 유효성 검사 ─────────────────────────────────────
       if (deliveryType === '택배배송') {
-        if (!deliveryName.trim() || !deliveryPhone.trim() || !deliveryZipcode.trim() || !deliveryAddress.trim()) {
-          alert("택배 배송을 위한 수령인 이름, 연락처, 기본 주소를 모두 입력해주세요.");
+        if (deliveries.length === 0) {
+          alert("배송지를 최소 1개 이상 입력해주세요.");
           setIsProcessing(false);
           return;
         }
+        for (let i = 0; i < deliveries.length; i++) {
+          const d = deliveries[i];
+          if (!d.name.trim() || !d.phone.trim() || !d.zipcode.trim() || !d.address.trim()) {
+            alert(`${i + 1}번 배송지의 수령인, 연락처, 기본 주소를 모두 입력해주세요.`);
+            setIsProcessing(false);
+            return;
+          }
+        }
+        // 모든 장바구니 상품이 배송지에 정확히 배분되었는지 확인
+        for (const cartItem of cartItems) {
+          const totalAssigned = deliveries.reduce(
+            (sum, d) => sum + (parseInt(d.assignedQty[cartItem.cartItemId]) || 0), 0
+          );
+          if (totalAssigned !== cartItem.quantity) {
+            alert(`"${cartItem.product.name} (${cartItem.targetType})" ${cartItem.quantity}개가 배송지에 모두 배분되어야 합니다.\n(현재 배분 합계: ${totalAssigned}개)`);
+            setIsProcessing(false);
+            return;
+          }
+        }
       }
 
-      // 1. 직원 정보 확인 (프로필에서 이름 가져오기)
+      // 1. 직원 정보 확인
       const ordererName = user.name;
       
-      // 3. 당월 누적 구매 수량 조회 ('주문취소' 제외)
+      // 2. 당월 누적 구매 수량 조회 ('주문취소' 제외)
       const startOfMonth = new Date();
       startOfMonth.setDate(1);
       startOfMonth.setHours(0, 0, 0, 0);
@@ -224,9 +275,16 @@ function Home() {
         return;
       }
 
-      // 4. 주문 마스터(orders) 저장
-      const totalPrice = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+      // 3. 택배비 계산 (배송지 수 × 3,000원)
+      const DELIVERY_FEE_PER_ADDRESS = 3000;
+      const deliveryCount = deliveryType === '택배배송' ? deliveries.length : 0;
+      const deliveryFeeTotal = deliveryCount * DELIVERY_FEE_PER_ADDRESS;
+
+      // 4. 상품 금액 합계 및 최종 결제 금액
+      const productTotal = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+      const totalPrice = productTotal + deliveryFeeTotal;
       
+      // 5. 주문 마스터(orders) 저장
       const { data: newOrder, error: insertOrderErr } = await supabase
         .from('orders')
         .insert({
@@ -234,12 +292,14 @@ function Home() {
           total_price: totalPrice,
           status: '입금대기',
           delivery_type: deliveryType,
-          delivery_name: deliveryType === '택배배송' ? deliveryName : null,
-          delivery_phone: deliveryType === '택배배송' ? deliveryPhone : null,
-          delivery_zipcode: deliveryType === '택배배송' ? deliveryZipcode : null,
-          delivery_address: deliveryType === '택배배송' ? deliveryAddress : null,
-          delivery_address_detail: deliveryType === '택배배송' ? deliveryAddressDetail : null,
-          delivery_memo: deliveryType === '택배배송' ? deliveryMemo : null,
+          // 하위 호환성: 첫 번째 배송지 정보를 기존 컬럼에도 저장
+          delivery_name: deliveryType === '택배배송' ? deliveries[0].name : null,
+          delivery_phone: deliveryType === '택배배송' ? deliveries[0].phone : null,
+          delivery_zipcode: deliveryType === '택배배송' ? deliveries[0].zipcode : null,
+          delivery_address: deliveryType === '택배배송' ? deliveries[0].address : null,
+          delivery_address_detail: deliveryType === '택배배송' ? deliveries[0].addressDetail : null,
+          delivery_memo: deliveryType === '택배배송' ? deliveries[0].memo : null,
+          delivery_fee_total: deliveryFeeTotal,
           cash_receipt_phone: cashReceiptPhone
         })
         .select()
@@ -247,7 +307,7 @@ function Home() {
 
       if (insertOrderErr) throw insertOrderErr;
 
-      // 5. 주문 상세(order_items) 저장
+      // 6. 주문 상세(order_items) 저장
       const itemsToInsert = cartItems.map(item => ({
         order_id: newOrder.id,
         product_id: item.product.id,
@@ -263,30 +323,65 @@ function Home() {
 
       if (insertItemsErr) throw insertItemsErr;
 
-      // NTFY 알림은 오류 발생 및 불필요하므로 삭제 (텔레그램 및 이메일 알림으로 대체)
+      // 7. 다중 배송지(order_deliveries) 저장 (택배 배송일 때만)
+      if (deliveryType === '택배배송') {
+        const deliveriesToInsert = deliveries.map((d, idx) => {
+          // 이 배송지에 할당된 상품 목록 스냅샷
+          const assignedItemsSnapshot = cartItems
+            .filter(ci => (parseInt(d.assignedQty[ci.cartItemId]) || 0) > 0)
+            .map(ci => ({
+              product_name: ci.product.name,
+              target_type: ci.targetType,
+              quantity: parseInt(d.assignedQty[ci.cartItemId]) || 0,
+              price: ci.price
+            }));
 
-      // 🚀 7. 텔레그램 알림 발송 추가
+          return {
+            order_id: newOrder.id,
+            seq_no: idx + 1,
+            recipient_name: d.name,
+            phone: d.phone,
+            zipcode: d.zipcode,
+            address: d.address,
+            address_detail: d.addressDetail,
+            memo: d.memo,
+            delivery_fee: DELIVERY_FEE_PER_ADDRESS,
+            assigned_items: assignedItemsSnapshot
+          };
+        });
+
+        const { error: insertDeliveriesErr } = await supabase
+          .from('order_deliveries')
+          .insert(deliveriesToInsert);
+
+        if (insertDeliveriesErr) throw insertDeliveriesErr;
+      }
+
+      // 8. 텔레그램 & 이메일 알림 발송
       try {
         await sendTelegramOrderAlert({
           memberName: ordererName,
           items: itemsToInsert,
           totalPrice: totalPrice,
+          deliveryFeeTotal: deliveryFeeTotal,
+          deliveries: deliveryType === '택배배송' ? deliveries : [],
           status: '입금대기'
         });
 
-        // 📧 8. 이메일 영수증 발송 (직원 본인에게)
         const orderId = newOrder ? newOrder.id : '알수없음';
         await sendEmailReceipt('order', user, {
           orderId: orderId,
           items: itemsToInsert,
-          totalPrice: totalPrice
+          totalPrice: totalPrice,
+          deliveryFeeTotal: deliveryFeeTotal,
+          deliveries: deliveryType === '택배배송' ? deliveries : []
         });
       } catch (e) {
-        console.error('텔레그램 알림 발송 중 오류:', e);
+        console.error('알림 발송 중 오류:', e);
       }
 
-      // 8. 주문 완료 후 화면 처리 (내부 모달 호출)
-      setOrderSuccessData({ totalPrice });
+      // 9. 주문 완료 후 화면 처리
+      setOrderSuccessData({ totalPrice, productTotal, deliveryFeeTotal, deliveryCount });
       setCartItems([]);
       setShowAuthModal(false);
 
@@ -368,7 +463,7 @@ function Home() {
           {/* 1. 좌측 로고 영역 */}
           <div className="header-logo-container" style={{ display: 'flex', alignItems: 'center' }}>
             <img 
-              src="/logo/logo-h.svg" 
+              src="/logo/logo-h.png" 
               alt="제니트리 로고" 
               className="header-logo"
             />
@@ -498,7 +593,7 @@ function Home() {
           backgroundColor: 'var(--jt-dim-50)', backdropFilter: 'blur(4px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 9999
         }}>
           <div className="card animate-fade-in" style={{ 
-            width: '90%', maxWidth: '450px', backgroundColor: 'var(--jt-neutral-0)', 
+            width: '90%', maxWidth: '520px', backgroundColor: 'var(--jt-neutral-0)', 
             padding: 'var(--jt-space-7)', borderRadius: 'var(--jt-r-xl)', boxShadow: 'var(--jt-shadow-2xl)',
             maxHeight: '90vh', overflowY: 'auto'
           }}>
@@ -517,7 +612,7 @@ function Home() {
                 </label>
                 <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer' }}>
                   <input type="radio" name="deliveryType" value="택배배송" checked={deliveryType === '택배배송'} onChange={(e) => setDeliveryType(e.target.value)} />
-                  택배 배송
+                  택배 배송 <span style={{ fontSize: '0.75rem', color: 'var(--jt-color-text-secondary)', marginLeft: '4px' }}>(건당 3,000원)</span>
                 </label>
               </div>
               <p style={{ fontSize: '0.8rem', color: 'var(--jt-color-primary)', marginTop: '0.6rem', marginBottom: '0', display: 'flex', alignItems: 'center' }}>
@@ -526,31 +621,149 @@ function Home() {
               </p>
             </div>
 
-            {/* 택배 배송일 때만 노출되는 폼 */}
+            {/* ── 택배 배송일 때만 노출: 다중 배송지 카드 ── */}
             {deliveryType === '택배배송' && (
-              <div style={{ border: '1px solid var(--jt-neutral-200)', padding: '1rem', borderRadius: 'var(--jt-r-md)', marginBottom: '1rem', backgroundColor: 'var(--jt-neutral-50)' }}>
-                <div style={{ marginBottom: '0.8rem' }}>
-                  <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '0.3rem' }}>수령인</label>
-                  <input type="text" value={deliveryName} onChange={(e) => setDeliveryName(e.target.value)} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--jt-color-border)' }} />
-                </div>
-                <div style={{ marginBottom: '0.8rem' }}>
-                  <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '0.3rem' }}>
-                    연락처 <span style={{ color: 'var(--jt-color-text-tertiary)', fontSize: '0.75rem', fontWeight: 'normal' }}>(숫자만 입력)</span>
-                  </label>
-                  <input type="text" value={deliveryPhone} onChange={(e) => handlePhoneChange(e, setDeliveryPhone)} placeholder="숫자만 입력하세요" maxLength="13" style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--jt-color-border)' }} />
-                </div>
-                <div style={{ marginBottom: '0.8rem' }}>
-                  <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '0.3rem' }}>주소</label>
-                  <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                    <input type="text" value={deliveryZipcode} readOnly placeholder="우편번호" style={{ flex: 1, padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--jt-color-border)', backgroundColor: '#f9f9f9' }} />
-                    <button type="button" onClick={handlePostcodeSearch} style={{ padding: '0.5rem 1rem', borderRadius: '4px', border: '1px solid var(--jt-color-primary)', backgroundColor: 'var(--jt-neutral-0)', color: 'var(--jt-color-primary)', cursor: 'pointer' }}>주소 찾기</button>
+              <div style={{ marginBottom: '1rem' }}>
+
+                {deliveries.map((delivery, dIdx) => (
+                  <div key={delivery.id} style={{
+                    border: '1px solid var(--jt-color-primary)', padding: '1rem',
+                    borderRadius: 'var(--jt-r-md)', marginBottom: '0.75rem',
+                    backgroundColor: 'var(--jt-neutral-50)', position: 'relative'
+                  }}>
+                    {/* 배송지 헤더 */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+                      <span style={{ fontWeight: '700', fontSize: '0.9rem', color: 'var(--jt-color-primary)' }}>
+                        <span className="material-symbols-rounded" style={{ fontSize: '16px', verticalAlign: 'middle', marginRight: '4px' }}>local_shipping</span>
+                        배송지 {dIdx + 1}
+                        <span style={{ marginLeft: '8px', fontSize: '0.75rem', backgroundColor: 'var(--jt-color-primary)', color: '#fff', padding: '1px 6px', borderRadius: '99px' }}>
+                          +3,000원
+                        </span>
+                      </span>
+                      {deliveries.length > 1 && (
+                        <button onClick={() => removeDelivery(dIdx)} style={{
+                          background: 'none', border: 'none', cursor: 'pointer', color: 'var(--jt-color-error)', display: 'flex', alignItems: 'center'
+                        }}>
+                          <span className="material-symbols-rounded" style={{ fontSize: '20px' }}>delete</span>
+                        </button>
+                      )}
+                    </div>
+
+                    {/* 수령인 */}
+                    <div style={{ marginBottom: '0.6rem' }}>
+                      <label style={{ display: 'block', fontSize: '0.82rem', marginBottom: '0.25rem' }}>수령인 *</label>
+                      <input type="text" value={delivery.name}
+                        onChange={(e) => updateDelivery(dIdx, 'name', e.target.value)}
+                        style={{ width: '100%', padding: '0.45rem', borderRadius: '4px', border: '1px solid var(--jt-color-border)', boxSizing: 'border-box' }} />
+                    </div>
+
+                    {/* 연락처 */}
+                    <div style={{ marginBottom: '0.6rem' }}>
+                      <label style={{ display: 'block', fontSize: '0.82rem', marginBottom: '0.25rem' }}>연락처 * <span style={{ color: 'var(--jt-color-text-tertiary)', fontSize: '0.73rem' }}>(숫자만)</span></label>
+                      <input type="text" value={delivery.phone} maxLength="13"
+                        onChange={(e) => updateDelivery(dIdx, 'phone', formatPhoneNumber(e.target.value))}
+                        placeholder="010-0000-0000"
+                        style={{ width: '100%', padding: '0.45rem', borderRadius: '4px', border: '1px solid var(--jt-color-border)', boxSizing: 'border-box' }} />
+                    </div>
+
+                    {/* 주소 */}
+                    <div style={{ marginBottom: '0.6rem' }}>
+                      <label style={{ display: 'block', fontSize: '0.82rem', marginBottom: '0.25rem' }}>주소 *</label>
+                      <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.4rem' }}>
+                        <input type="text" value={delivery.zipcode} readOnly placeholder="우편번호"
+                          style={{ flex: 1, padding: '0.45rem', borderRadius: '4px', border: '1px solid var(--jt-color-border)', backgroundColor: '#f9f9f9' }} />
+                        <button type="button" onClick={() => handlePostcodeSearch(dIdx)}
+                          style={{ padding: '0.45rem 0.8rem', borderRadius: '4px', border: '1px solid var(--jt-color-primary)', backgroundColor: 'var(--jt-neutral-0)', color: 'var(--jt-color-primary)', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                          주소 찾기
+                        </button>
+                      </div>
+                      <input type="text" value={delivery.address} readOnly placeholder="기본 주소"
+                        style={{ width: '100%', padding: '0.45rem', borderRadius: '4px', border: '1px solid var(--jt-color-border)', marginBottom: '0.4rem', backgroundColor: '#f9f9f9', boxSizing: 'border-box' }} />
+                      <input type="text" value={delivery.addressDetail}
+                        onChange={(e) => updateDelivery(dIdx, 'addressDetail', e.target.value)}
+                        placeholder="상세 주소"
+                        style={{ width: '100%', padding: '0.45rem', borderRadius: '4px', border: '1px solid var(--jt-color-border)', boxSizing: 'border-box' }} />
+                    </div>
+
+                    {/* 배송 요청사항 */}
+                    <div style={{ marginBottom: '0.75rem' }}>
+                      <label style={{ display: 'block', fontSize: '0.82rem', marginBottom: '0.25rem' }}>배송 요청사항</label>
+                      <input type="text" value={delivery.memo}
+                        onChange={(e) => updateDelivery(dIdx, 'memo', e.target.value)}
+                        placeholder="문 앞에 놓아주세요"
+                        style={{ width: '100%', padding: '0.45rem', borderRadius: '4px', border: '1px solid var(--jt-color-border)', boxSizing: 'border-box' }} />
+                    </div>
+
+                    {/* ── 이 배송지로 보낼 상품 배분 ── */}
+                    <div style={{ borderTop: '1px dashed var(--jt-color-border)', paddingTop: '0.7rem' }}>
+                      <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: '600', marginBottom: '0.5rem', color: 'var(--jt-color-text)' }}>
+                        <span className="material-symbols-rounded" style={{ fontSize: '15px', verticalAlign: 'middle', marginRight: '3px' }}>inventory_2</span>
+                        이 배송지로 보낼 수량
+                      </label>
+                      {cartItems.map(ci => {
+                        const assigned = parseInt(delivery.assignedQty[ci.cartItemId]) || 0;
+                        // 다른 배송지에서 이미 배분된 수량 합계
+                        const usedElsewhere = deliveries.reduce(
+                          (sum, d, i) => i !== dIdx ? sum + (parseInt(d.assignedQty[ci.cartItemId]) || 0) : sum, 0
+                        );
+                        const remaining = ci.quantity - usedElsewhere;
+                        return (
+                          <div key={ci.cartItemId} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.4rem', gap: '0.5rem' }}>
+                            <span style={{ fontSize: '0.8rem', flex: 1, color: 'var(--jt-color-text)' }}>
+                              {ci.product.name} <span style={{ color: 'var(--jt-color-text-secondary)', fontSize: '0.73rem' }}>({ci.targetType})</span>
+                              <span style={{ color: 'var(--jt-color-text-tertiary)', fontSize: '0.73rem', marginLeft: '4px' }}>총 {ci.quantity}개</span>
+                            </span>
+                            <input
+                              type="number" min="0" max={remaining + assigned}
+                              value={assigned}
+                              onChange={(e) => updateAssignedQty(dIdx, ci.cartItemId, e.target.value)}
+                              style={{ width: '60px', padding: '0.3rem', borderRadius: '4px', border: `1px solid ${assigned > 0 ? 'var(--jt-color-primary)' : 'var(--jt-color-border)'}`, textAlign: 'center', fontSize: '0.85rem' }}
+                            />
+                            <span style={{ fontSize: '0.75rem', color: 'var(--jt-color-text-secondary)', minWidth: '40px' }}>개</span>
+                          </div>
+                        );
+                      })}
+                      {/* 미배분 상품 경고 */}
+                      {cartItems.some(ci => {
+                        const totalAssigned = deliveries.reduce((sum, d) => sum + (parseInt(d.assignedQty[ci.cartItemId]) || 0), 0);
+                        return totalAssigned !== ci.quantity;
+                      }) && (
+                        <p style={{ fontSize: '0.75rem', color: 'var(--jt-color-error)', margin: '0.3rem 0 0', display: 'flex', alignItems: 'center', gap: '3px' }}>
+                          <span className="material-symbols-rounded" style={{ fontSize: '14px' }}>warning</span>
+                          모든 상품이 배송지에 배분되어야 주문 가능합니다.
+                        </p>
+                      )}
+                    </div>
                   </div>
-                  <input type="text" value={deliveryAddress} readOnly placeholder="기본 주소" style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--jt-color-border)', marginBottom: '0.5rem', backgroundColor: '#f9f9f9' }} />
-                  <input type="text" value={deliveryAddressDetail} onChange={(e) => setDeliveryAddressDetail(e.target.value)} placeholder="상세 주소를 입력해주세요" style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--jt-color-border)' }} />
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '0.3rem' }}>배송 요청사항</label>
-                  <input type="text" value={deliveryMemo} onChange={(e) => setDeliveryMemo(e.target.value)} placeholder="문 앞에 놓아주세요" style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--jt-color-border)' }} />
+                ))}
+
+                {/* 배송지 추가 버튼 */}
+                <button onClick={addDelivery} style={{
+                  width: '100%', padding: '0.6rem', borderRadius: 'var(--jt-r-md)',
+                  border: '1px dashed var(--jt-color-primary)', background: 'var(--jt-neutral-0)',
+                  color: 'var(--jt-color-primary)', cursor: 'pointer', fontSize: '0.9rem',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', marginBottom: '0.75rem'
+                }}>
+                  <span className="material-symbols-rounded" style={{ fontSize: '18px' }}>add_location_alt</span>
+                  배송지 추가 (+3,000원)
+                </button>
+
+                {/* 택배비 요약 */}
+                <div style={{ backgroundColor: 'var(--jt-neutral-100)', borderRadius: 'var(--jt-r-md)', padding: '0.75rem 1rem', fontSize: '0.85rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.3rem', color: 'var(--jt-color-text-secondary)' }}>
+                    <span>상품 금액</span>
+                    <span>{cartItems.reduce((s, i) => s + i.price * i.quantity, 0).toLocaleString()}원</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.3rem', color: 'var(--jt-color-text-secondary)' }}>
+                    <span>택배비 ({deliveries.length}건 × 3,000원)</span>
+                    <span>{(deliveries.length * 3000).toLocaleString()}원</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: '700', borderTop: '1px solid var(--jt-color-border)', paddingTop: '0.4rem', color: 'var(--jt-color-text)', fontSize: '0.95rem' }}>
+                    <span>최종 합계</span>
+                    <span style={{ color: 'var(--jt-color-primary)' }}>
+                      {(cartItems.reduce((s, i) => s + i.price * i.quantity, 0) + deliveries.length * 3000).toLocaleString()}원
+                    </span>
+                  </div>
                 </div>
               </div>
             )}
@@ -629,6 +842,20 @@ function Home() {
               borderRadius: 'var(--jt-r-md)', 
               marginBottom: '1.5rem' 
             }}>
+              {/* 택배비가 있으면 상품/택배비/합계 세분화 표시 */}
+              {orderSuccessData.deliveryFeeTotal > 0 && (
+                <>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 'var(--jt-space-2)', fontSize: '0.85rem' }}>
+                    <span style={{ color: 'var(--jt-color-text-secondary)' }}>상품 금액</span>
+                    <span>{orderSuccessData.productTotal.toLocaleString()}원</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 'var(--jt-space-2)', fontSize: '0.85rem' }}>
+                    <span style={{ color: 'var(--jt-color-text-secondary)' }}>택배비 ({orderSuccessData.deliveryCount}건 × 3,000원)</span>
+                    <span>{orderSuccessData.deliveryFeeTotal.toLocaleString()}원</span>
+                  </div>
+                  <div style={{ borderTop: '1px solid var(--jt-color-border)', marginBottom: 'var(--jt-space-3)', paddingTop: 'var(--jt-space-2)' }} />
+                </>
+              )}
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 'var(--jt-space-3)' }}>
                 <span style={{ color: 'var(--jt-color-text-secondary)', fontSize: '0.9rem' }}>총 결제 금액</span>
                 <span style={{ fontWeight: '700', color: 'var(--jt-color-text)', fontSize: '1.1rem' }}>{orderSuccessData.totalPrice.toLocaleString()}원</span>

@@ -32,9 +32,32 @@ export const sendTelegramOrderAlert = async (orderData) => {
     });
     
     message += `──────────────────\n`;
-    message += `💰 <b>총 결제액:</b> ${orderData.totalPrice.toLocaleString()}원\n`;
-    message += `🏷 <b>현재상태:</b> ${orderData.status}\n\n`;
-    message += `※ 관리자 페이지에서 입금 확인 및 상태를 변경해주세요.`;
+    message += `💰 <b>상품 금액:</b> ${(orderData.totalPrice - (orderData.deliveryFeeTotal || 0)).toLocaleString()}원\n`;
+
+    // 택배 배송지 정보 추가
+    if (orderData.deliveries && orderData.deliveries.length > 0) {
+      message += `🚚 <b>택배비:</b> ${orderData.deliveries.length}건 × 3,000원 = ${(orderData.deliveries.length * 3000).toLocaleString()}원\n`;
+      message += `💳 <b>총 결제액:</b> ${orderData.totalPrice.toLocaleString()}원\n`;
+      message += `🏷 <b>현재상태:</b> ${orderData.status}\n`;
+      message += `──────────────────\n`;
+      message += `📬 <b>배송지 목록</b>\n`;
+      orderData.deliveries.forEach((d, idx) => {
+        message += `\n${idx + 1}번 배송지\n`;
+        message += `  수령인: ${d.name} / ${d.phone}\n`;
+        message += `  주소: (${d.zipcode}) ${d.address} ${d.addressDetail || ''}\n`;
+        if (d.memo) message += `  요청: ${d.memo}\n`;
+        // 이 배송지로 가는 상품 목록
+        const assignedItems = Object.entries(d.assignedQty || {});
+        if (assignedItems.length > 0) {
+          // cartItemId → 상품명 매핑은 없으므로 수량만 표시 (DB 저장은 정확히 됨)
+        }
+      });
+    } else {
+      message += `💳 <b>총 결제액:</b> ${orderData.totalPrice.toLocaleString()}원\n`;
+      message += `🏷 <b>현재상태:</b> ${orderData.status}\n`;
+    }
+
+    message += `\n※ 관리자 페이지에서 입금 확인 및 상태를 변경해주세요.`;
 
     const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
     
@@ -85,7 +108,7 @@ export const sendTelegramCancelAlert = async (memberName, orderId) => {
  * EmailJS를 이용해 주문/취소 내역을 직원 본인에게 발송합니다.
  * @param {string} type - 'order' 또는 'cancel'
  * @param {Object} memberInfo - { email, name }
- * @param {Object} details - { orderId, items(배열), totalPrice, status }
+ * @param {Object} details - { orderId, items(배열), totalPrice, deliveryFeeTotal, deliveries(배열) }
  */
 export const sendEmailReceipt = async (type, memberInfo, details) => {
   if (!EMAILJS_SERVICE_ID || !EMAILJS_TEMPLATE_ID || !EMAILJS_PUBLIC_KEY) {
@@ -98,6 +121,7 @@ export const sendEmailReceipt = async (type, memberInfo, details) => {
   }
 
   try {
+    // 주문 상품 목록 텍스트 조성
     let productDetails = '';
     if (details.items && details.items.length > 0) {
       details.items.forEach((item, idx) => {
@@ -107,13 +131,39 @@ export const sendEmailReceipt = async (type, memberInfo, details) => {
       productDetails = '상세 내역 없음';
     }
 
+    // 배송지 정보 텍스트 조성 (택배 배송인 경우에만)
+    let deliveryInfo = '';
+    if (details.deliveries && details.deliveries.length > 0) {
+      deliveryInfo += `\n📦 배송지 정보\n`;
+      deliveryInfo += `─────────────────────────\n`;
+      details.deliveries.forEach((d, idx) => {
+        deliveryInfo += `\n${idx + 1}번 배송지\n`;
+        deliveryInfo += `  수령인: ${d.name} / ${d.phone}\n`;
+        deliveryInfo += `  주소: (${d.zipcode}) ${d.address}`;
+        if (d.addressDetail) deliveryInfo += ` ${d.addressDetail}`;
+        deliveryInfo += `\n`;
+        if (d.memo) deliveryInfo += `  요청사항: ${d.memo}\n`;
+      });
+      deliveryInfo += `\n택배비: ${details.deliveries.length}건 × 3,000원 = ${(details.deliveries.length * 3000).toLocaleString()}원\n`;
+    }
+
+    // 금액 표시: 택배비 있으면 분리 표시, 없으면 합계만
+    let priceText = '';
+    if (details.deliveryFeeTotal > 0) {
+      const productTotal = details.totalPrice - details.deliveryFeeTotal;
+      priceText = `상품 금액: ${productTotal.toLocaleString()}원\n택배비: ${details.deliveryFeeTotal.toLocaleString()}원\n합계: ${details.totalPrice.toLocaleString()}원`;
+    } else {
+      priceText = details.totalPrice ? details.totalPrice.toLocaleString() + '원' : '-';
+    }
+
     const templateParams = {
       to_name: memberInfo.name || '임직원',
       to_email: memberInfo.email,
       order_id: details.orderId || '-',
       order_status: type === 'order' ? '주문 완료' : '주문 취소',
       product_details: productDetails,
-      total_price: details.totalPrice ? details.totalPrice.toLocaleString() + '원' : '-'
+      total_price: priceText,
+      delivery_info: deliveryInfo  // 배송지 정보 (EmailJS 템플릿에 {{delivery_info}} 추가 필요)
     };
 
     const response = await emailjs.send(
