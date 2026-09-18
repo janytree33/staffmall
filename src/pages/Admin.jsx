@@ -62,6 +62,7 @@ export default function Admin() {
         .select(`
           id,
           total_price,
+          delivery_fee_total,
           status,
           created_at,
           delivery_type,
@@ -72,7 +73,8 @@ export default function Admin() {
           delivery_memo,
           cash_receipt_phone,
           members ( name, phone_last_4_hashed ),
-          order_items ( product_name, target_type, quantity, price )
+          order_items ( product_name, target_type, quantity, price ),
+          order_deliveries ( seq_no, recipient_name, phone, zipcode, address, address_detail, memo, assigned_items )
         `)
         .gte('created_at', startRange)
         .lt('created_at', endRange)
@@ -149,31 +151,74 @@ export default function Admin() {
     let csvContent = headers.join(",") + "\n";
 
     targetOrders.forEach(order => {
-      if (order.order_items && order.order_items.length > 0) {
-        order.order_items.forEach(item => {
-          const row = Array(40).fill("");
-          row[1] = order.id;
-          row[2] = order.status;
-          row[18] = item.quantity || 1;
-          row[19] = "제니트리 발송품";
-          row[20] = `${item.product_name} (${item.target_type})`;
-          row[21] = item.price || 0;
-          row[26] = order.delivery_name || order.members?.name || "";
-          row[27] = order.delivery_phone || "";
-          row[30] = order.delivery_address || "";
-          row[31] = order.delivery_address_detail || "";
-          row[32] = order.delivery_memo || "";
-          row[38] = new Date(order.created_at).toLocaleDateString();
+      // order_deliveries가 있으면 배송지별로 행을 생성 (신규 방식)
+      const deliveries = order.order_deliveries && order.order_deliveries.length > 0
+        ? [...order.order_deliveries].sort((a, b) => a.seq_no - b.seq_no)
+        : null;
 
-          const escapedRow = row.map(cell => {
-            let str = String(cell !== undefined && cell !== null ? cell : '');
-            if (str.includes(',') || str.includes('"') || str.includes('\n')) {
-              str = '"' + str.replace(/"/g, '""') + '"';
-            }
-            return str;
+      if (deliveries) {
+        // 📦 신규 방식: 배송지 1개당 assigned_items 기준으로 행 생성
+        deliveries.forEach((d, dIdx) => {
+          // 이 배송지에 배정된 상품 목록
+          const items = d.assigned_items && d.assigned_items.length > 0
+            ? d.assigned_items
+            : order.order_items || []; // 배분 정보 없으면 전체 상품으로 fallback
+
+          items.forEach(item => {
+            const row = Array(40).fill("");
+            row[1] = order.id;
+            row[2] = order.status;
+            row[5] = 3000; // 배송지당 택배비 3,000원
+            row[18] = item.quantity || 1;
+            row[19] = "제니트리 발송품";
+            row[20] = `${item.product_name} (${item.target_type || item.target_type || ''})`;
+            row[21] = item.price || 0;
+            row[26] = d.recipient_name || "";
+            row[27] = d.phone || "";
+            row[29] = d.zipcode || "";
+            row[30] = d.address || "";
+            row[31] = d.address_detail || "";
+            row[32] = d.memo || "";
+            row[38] = new Date(order.created_at).toLocaleDateString();
+
+            const escapedRow = row.map(cell => {
+              let str = String(cell !== undefined && cell !== null ? cell : '');
+              if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+                str = '"' + str.replace(/"/g, '""') + '"';
+              }
+              return str;
+            });
+            csvContent += escapedRow.join(",") + "\n";
           });
-          csvContent += escapedRow.join(",") + "\n";
         });
+      } else {
+        // 🔄 구 방식 호환: 단일 배송지
+        if (order.order_items && order.order_items.length > 0) {
+          order.order_items.forEach(item => {
+            const row = Array(40).fill("");
+            row[1] = order.id;
+            row[2] = order.status;
+            row[18] = item.quantity || 1;
+            row[19] = "제니트리 발송품";
+            row[20] = `${item.product_name} (${item.target_type})`;
+            row[21] = item.price || 0;
+            row[26] = order.delivery_name || order.members?.name || "";
+            row[27] = order.delivery_phone || "";
+            row[30] = order.delivery_address || "";
+            row[31] = order.delivery_address_detail || "";
+            row[32] = order.delivery_memo || "";
+            row[38] = new Date(order.created_at).toLocaleDateString();
+
+            const escapedRow = row.map(cell => {
+              let str = String(cell !== undefined && cell !== null ? cell : '');
+              if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+                str = '"' + str.replace(/"/g, '""') + '"';
+              }
+              return str;
+            });
+            csvContent += escapedRow.join(",") + "\n";
+          });
+        }
       }
     });
 
@@ -214,7 +259,7 @@ export default function Admin() {
     <div className="container" style={{ paddingBottom: '140px' }}>
       <header style={{ marginBottom: '2.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <Link to="/" style={{ textDecoration: 'none' }}>
-          <img src="/logo/logo-h.svg" alt="제니트리 로고" className="header-logo" />
+          <img src="/logo/logo-h.png" alt="제니트리 로고" className="header-logo" />
         </Link>
         <Link to="/" className="premium-btn" style={{ padding: '0.4rem 0.8rem', fontSize: '0.9rem', textDecoration: 'none', background: 'var(--jt-neutral-100)', color: 'var(--jt-color-text)', border: '1px solid var(--jt-color-border)' }}>
           ← 쇼핑몰 돌아가기
@@ -302,14 +347,42 @@ export default function Admin() {
                           </span>
                           {order.delivery_type || '방문수령'}
                         </div>
-                        {order.delivery_type === '택배배송' && (
-                          <div style={{ lineHeight: '1.4' }}>
-                            <div><strong>수령인:</strong> {order.delivery_name}</div>
-                            <div><strong>연락처:</strong> {order.delivery_phone}</div>
-                            <div><strong>주소:</strong> {order.delivery_address} {order.delivery_address_detail}</div>
-                            {order.delivery_memo && <div><strong>메모:</strong> {order.delivery_memo}</div>}
-                          </div>
-                        )}
+                        {order.delivery_type === '택배배송' && (() => {
+                          const deliveries = order.order_deliveries && order.order_deliveries.length > 0
+                            ? [...order.order_deliveries].sort((a, b) => a.seq_no - b.seq_no)
+                            : null;
+
+                          if (deliveries) {
+                            // 신규: 다중 배송지 표시
+                            return (
+                              <div style={{ lineHeight: '1.5', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                {deliveries.map((d, i) => (
+                                  <div key={i} style={{ borderLeft: '2px solid var(--jt-color-primary)', paddingLeft: '6px' }}>
+                                    <div style={{ fontWeight: 'bold', fontSize: '0.78rem', color: 'var(--jt-color-primary)' }}>배송지 {d.seq_no}</div>
+                                    <div><strong>수령인:</strong> {d.recipient_name} / {d.phone}</div>
+                                    <div><strong>주소:</strong> ({d.zipcode}) {d.address} {d.address_detail}</div>
+                                    {d.memo && <div><strong>메모:</strong> {d.memo}</div>}
+                                    {d.assigned_items && d.assigned_items.length > 0 && (
+                                      <div style={{ color: 'var(--jt-color-text-tertiary)', fontSize: '0.78rem' }}>
+                                        → {d.assigned_items.map(ai => `${ai.product_name} ${ai.quantity}개`).join(', ')}
+                                      </div>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            );
+                          } else {
+                            // 구 방식 호환: 단일 배송지
+                            return (
+                              <div style={{ lineHeight: '1.4' }}>
+                                <div><strong>수령인:</strong> {order.delivery_name}</div>
+                                <div><strong>연락처:</strong> {order.delivery_phone}</div>
+                                <div><strong>주소:</strong> {order.delivery_address} {order.delivery_address_detail}</div>
+                                {order.delivery_memo && <div><strong>메모:</strong> {order.delivery_memo}</div>}
+                              </div>
+                            );
+                          }
+                        })()}
                         <div style={{ marginTop: order.delivery_type === '택배배송' ? '0.5rem' : '0.2rem', paddingTop: order.delivery_type === '택배배송' ? '0.5rem' : '0', borderTop: order.delivery_type === '택배배송' ? '1px dashed var(--jt-color-border)' : 'none' }}>
                           <span className="material-symbols-rounded" style={{ fontSize: '16px', marginRight: '4px', verticalAlign: 'text-bottom', color: 'var(--jt-color-primary)' }}>receipt_long</span>
                           <strong style={{ color: 'var(--jt-color-primary)' }}>현금영수증:</strong> {order.cash_receipt_phone || '010-000-1234'}
