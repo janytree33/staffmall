@@ -71,6 +71,7 @@ export default function MyPage() {
             delivery_memo,
             tracking_number,
             cash_receipt_phone,
+            cash_receipt_issued,
             order_items ( product_name, target_type, quantity, price ),
             order_deliveries ( id, seq_no, recipient_name, phone, zipcode, address, address_detail, memo, tracking_number, assigned_items )
           `)
@@ -338,8 +339,8 @@ export default function MyPage() {
                     </span>
                     <span style={{ 
                       padding: '0.3rem 0.6rem', borderRadius: 'var(--jt-r-md)', fontSize: '0.8rem', fontWeight: 'bold',
-                      backgroundColor: order.status === '입금대기' ? 'var(--jt-neutral-100)' : order.status === '입금완료' ? '#ecfdf5' : 'var(--jt-danger-50)',
-                      color: order.status === '입금대기' ? 'var(--jt-neutral-700)' : order.status === '입금완료' ? '#047857' : 'var(--jt-color-danger)'
+                      backgroundColor: order.status === '입금대기' ? 'var(--jt-neutral-100)' : (order.status === '입금완료' || order.status === '배송/수령 완료') ? '#ecfdf5' : 'var(--jt-danger-50)',
+                      color: order.status === '입금대기' ? 'var(--jt-neutral-700)' : (order.status === '입금완료' || order.status === '배송/수령 완료') ? '#047857' : 'var(--jt-color-danger)'
                     }}>
                       {order.status}
                     </span>
@@ -347,15 +348,20 @@ export default function MyPage() {
                   
                   {/* 배송 및 결제 정보 */}
                   <div style={{ backgroundColor: 'var(--jt-neutral-50)', padding: 'var(--jt-space-3)', borderRadius: 'var(--jt-r-md)', marginBottom: 'var(--jt-space-3)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '13px', flexWrap: 'wrap', gap: '4px' }}>
                       <div>
                         <span style={{ fontWeight: 'bold', marginRight: '6px' }}>수령 방법:</span>
                         <span style={{ color: order.delivery_type === '택배배송' ? 'var(--jt-color-primary)' : 'var(--jt-color-text)', fontWeight: 'bold' }}>{order.delivery_type || '방문수령'}</span>
                       </div>
                       {order.cash_receipt_phone && (
-                        <div>
-                          <span style={{ fontWeight: 'bold', marginRight: '6px' }}>현금영수증:</span>
-                          <span>{formatPhoneNumber(order.cash_receipt_phone)}</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <span style={{ fontWeight: 'bold' }}>현금영수증:</span>
+                          <span>{order.cash_receipt_phone.includes('-') ? order.cash_receipt_phone : formatPhoneNumber(order.cash_receipt_phone)}</span>
+                          {order.cash_receipt_issued && (
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '2px', backgroundColor: '#10b981', color: '#ffffff', fontSize: '11px', fontWeight: 'bold', padding: '1px 6px', borderRadius: '4px' }}>
+                              ✓ 발급완료
+                            </span>
+                          )}
                         </div>
                       )}
                     </div>

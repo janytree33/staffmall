@@ -43,6 +43,45 @@ export default function Admin() {
   const [isUploadingTracking, setIsUploadingTracking] = useState(false);
   const [uploadResultModal, setUploadResultModal] = useState(null);
 
+  // 클립보드 복사 피드백 상태 (예: 'receipt_주문ID', 'price_주문ID')
+  const [copiedKey, setCopiedKey] = useState(null);
+
+  // 숫자만 클립보드에 복사하는 함수 (홈택스 붙여넣기용)
+  const handleCopyDigits = async (rawValue, key) => {
+    const digitsOnly = String(rawValue || '').replace(/[^0-9]/g, '');
+    if (!digitsOnly) return;
+    try {
+      await navigator.clipboard.writeText(digitsOnly);
+      setCopiedKey(key);
+      setTimeout(() => {
+        setCopiedKey(prev => (prev === key ? null : prev));
+      }, 1500);
+    } catch (err) {
+      console.error('클립보드 복사 실패:', err);
+    }
+  };
+
+  // 현금영수증 발급완료 상태 토글 함수
+  const handleToggleCashReceiptIssued = async (orderId, currentIssued) => {
+    const nextIssued = !currentIssued;
+    try {
+      const { error } = await supabase
+        .from('orders')
+        .update({ cash_receipt_issued: nextIssued })
+        .eq('id', orderId);
+
+      if (error) throw error;
+
+      // 새로고침 없이 즉시 화면 상태 반영
+      setAdminOrders(prev =>
+        prev.map(o => (o.id === orderId ? { ...o, cash_receipt_issued: nextIssued } : o))
+      );
+    } catch (err) {
+      console.error('현금영수증 상태 변경 오류:', err);
+      alert('현금영수증 발급 상태 변경에 실패했습니다. DB 마이그레이션(012_add_cash_receipt_issued.sql)이 실행되었는지 확인해주세요.');
+    }
+  };
+
   async function checkUserAndFetchData() {
     const sessionUser = JSON.parse(localStorage.getItem('custom_user') || 'null');
     // info 계정만 접근 가능
@@ -94,6 +133,7 @@ export default function Admin() {
           delivery_memo,
           tracking_number,
           cash_receipt_phone,
+          cash_receipt_issued,
           members ( name, phone_last_4_hashed ),
           order_items ( product_name, target_type, quantity, price ),
           order_deliveries ( id, seq_no, recipient_name, phone, zipcode, address, address_detail, memo, tracking_number, assigned_items )
@@ -484,6 +524,17 @@ export default function Admin() {
                 {isUploadingTracking ? '운송장 매칭 중...' : '운송장 엑셀 업로드'}
               </button>
 
+              <a
+                href="https://hometax.go.kr"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="premium-btn outline"
+                style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', padding: '0.4rem 0.8rem', fontSize: '0.85rem', textDecoration: 'none' }}
+              >
+                <span className="material-symbols-rounded" style={{ fontSize: '18px' }}>receipt_long</span>
+                홈택스 현금영수증 발급 ↗
+              </a>
+
               <span style={{ fontSize: '0.9rem', fontWeight: 'bold', color: 'var(--jt-color-text-secondary)', marginLeft: '0.5rem' }}>조회 월 선택:</span>
               <input 
                 type="month" 
@@ -603,14 +654,57 @@ export default function Admin() {
                             );
                           }
                         })()}
-                        <div style={{ marginTop: order.delivery_type === '택배배송' ? '0.5rem' : '0.2rem', paddingTop: order.delivery_type === '택배배송' ? '0.5rem' : '0', borderTop: order.delivery_type === '택배배송' ? '1px dashed var(--jt-color-border)' : 'none' }}>
-                          <span className="material-symbols-rounded" style={{ fontSize: '16px', marginRight: '4px', verticalAlign: 'text-bottom', color: 'var(--jt-color-primary)' }}>receipt_long</span>
-                          <strong style={{ color: 'var(--jt-color-primary)' }}>현금영수증:</strong> {order.cash_receipt_phone || '010-000-1234'}
+                        <div style={{ marginTop: order.delivery_type === '택배배송' ? '0.5rem' : '0.2rem', paddingTop: order.delivery_type === '택배배송' ? '0.5rem' : '0', borderTop: order.delivery_type === '택배배송' ? '1px dashed var(--jt-color-border)' : 'none', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '6px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap' }}>
+                            <span className="material-symbols-rounded" style={{ fontSize: '16px', color: 'var(--jt-color-primary)' }}>receipt_long</span>
+                            <strong style={{ color: 'var(--jt-color-primary)' }}>현금영수증:</strong>
+                            <button
+                              type="button"
+                              onClick={() => handleCopyDigits(order.cash_receipt_phone || '010-000-1234', `receipt_${order.id}`)}
+                              title="클릭하면 숫자만 복사됩니다"
+                              style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', background: 'var(--jt-neutral-0)', border: '1px solid var(--jt-color-border)', borderRadius: '4px', padding: '1px 6px', fontSize: '0.82rem', color: 'var(--jt-color-text)', cursor: 'pointer', fontFamily: 'var(--jt-font-num, inherit)' }}
+                            >
+                              {order.cash_receipt_phone || '010-000-1234'}
+                              <span className="material-symbols-rounded" style={{ fontSize: '13px', color: 'var(--jt-color-text-tertiary)' }}>content_copy</span>
+                            </button>
+                            {copiedKey === `receipt_${order.id}` && (
+                              <span style={{ fontSize: '0.75rem', fontWeight: 'bold', color: '#10b981' }}>숫자 복사됨!</span>
+                            )}
+                          </div>
+
+                          {order.status !== '주문취소' && (
+                            <button
+                              type="button"
+                              onClick={() => handleToggleCashReceiptIssued(order.id, order.cash_receipt_issued)}
+                              title={order.cash_receipt_issued ? '클릭하면 미발급 상태로 되돌립니다' : '현금영수증 발급 후 클릭하세요'}
+                              style={{
+                                display: 'inline-flex', alignItems: 'center', gap: '3px',
+                                padding: '2px 8px', borderRadius: 'var(--jt-r-md)', fontSize: '0.75rem', fontWeight: 'bold', cursor: 'pointer',
+                                backgroundColor: order.cash_receipt_issued ? '#10b981' : 'var(--jt-neutral-0)',
+                                color: order.cash_receipt_issued ? '#ffffff' : 'var(--jt-color-text-secondary)',
+                                border: order.cash_receipt_issued ? 'none' : '1px solid var(--jt-color-border)'
+                              }}
+                            >
+                              <span className="material-symbols-rounded" style={{ fontSize: '14px' }}>
+                                {order.cash_receipt_issued ? 'check_circle' : 'radio_button_unchecked'}
+                              </span>
+                              {order.cash_receipt_issued ? '발급완료' : '발급완료 체크'}
+                            </button>
+                          )}
                         </div>
                       </div>
                     </td>
                     <td style={{ padding: '1rem 0.8rem', border: '1px solid var(--jt-color-border)', verticalAlign: 'middle', fontWeight: 'bold', color: order.status === '주문취소' ? 'var(--jt-neutral-500)' : 'var(--jt-color-text)', textDecoration: order.status === '주문취소' ? 'line-through' : 'none' }}>
-                      {order.total_price.toLocaleString()}원
+                      <div
+                        onClick={() => handleCopyDigits(order.total_price, `price_${order.id}`)}
+                        title="클릭하면 결제금액 숫자만 복사됩니다"
+                        style={{ cursor: 'pointer', display: 'inline-flex', flexDirection: 'column', alignItems: 'center', gap: '2px' }}
+                      >
+                        <span>{order.total_price.toLocaleString()}원</span>
+                        {copiedKey === `price_${order.id}` && (
+                          <span style={{ fontSize: '0.72rem', color: '#10b981', fontWeight: 'bold' }}>금액 복사됨!</span>
+                        )}
+                      </div>
                     </td>
                     <td style={{ padding: '1rem 0.8rem', border: '1px solid var(--jt-color-border)', verticalAlign: 'middle' }}>
                       <span style={{ 
