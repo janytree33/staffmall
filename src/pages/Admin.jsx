@@ -525,7 +525,7 @@ export default function Admin() {
               </button>
 
               <a
-                href="https://hometax.go.kr"
+                href="https://hometax.go.kr/websquare/websquare.html?w2xPath=/ui/pp/index_pp.xml&menuCd=index4"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="premium-btn outline"
@@ -658,6 +658,21 @@ export default function Admin() {
                           <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap' }}>
                             <span className="material-symbols-rounded" style={{ fontSize: '16px', color: 'var(--jt-color-primary)' }}>receipt_long</span>
                             <strong style={{ color: 'var(--jt-color-primary)' }}>현금영수증:</strong>
+                            {(() => {
+                              const rawNo = String(order.cash_receipt_phone || '010-000-1234').trim();
+                              const digits = rawNo.replace(/[^0-9]/g, '');
+                              const isBusiness = /^\d{3}-\d{2}-\d{5}$/.test(rawNo) || (digits.length === 10 && !digits.startsWith('01'));
+                              return (
+                                <span style={{
+                                  fontSize: '0.72rem', fontWeight: 'bold', padding: '1px 5px', borderRadius: '4px',
+                                  backgroundColor: isBusiness ? '#eff6ff' : 'var(--jt-neutral-100)',
+                                  color: isBusiness ? '#1d4ed8' : 'var(--jt-color-text-secondary)',
+                                  border: isBusiness ? '1px solid #bfdbfe' : '1px solid var(--jt-color-border)'
+                                }}>
+                                  {isBusiness ? '지출증빙' : '소득공제'}
+                                </span>
+                              );
+                            })()}
                             <button
                               type="button"
                               onClick={() => handleCopyDigits(order.cash_receipt_phone || '010-000-1234', `receipt_${order.id}`)}

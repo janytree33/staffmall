@@ -354,8 +354,23 @@ export default function MyPage() {
                         <span style={{ color: order.delivery_type === '택배배송' ? 'var(--jt-color-primary)' : 'var(--jt-color-text)', fontWeight: 'bold' }}>{order.delivery_type || '방문수령'}</span>
                       </div>
                       {order.cash_receipt_phone && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '5px', flexWrap: 'wrap' }}>
                           <span style={{ fontWeight: 'bold' }}>현금영수증:</span>
+                          {(() => {
+                            const rawNo = String(order.cash_receipt_phone || '010-000-1234').trim();
+                            const digits = rawNo.replace(/[^0-9]/g, '');
+                            const isBusiness = /^\d{3}-\d{2}-\d{5}$/.test(rawNo) || (digits.length === 10 && !digits.startsWith('01'));
+                            return (
+                              <span style={{
+                                fontSize: '11px', fontWeight: 'bold', padding: '1px 5px', borderRadius: '4px',
+                                backgroundColor: isBusiness ? '#eff6ff' : 'var(--jt-neutral-100)',
+                                color: isBusiness ? '#1d4ed8' : 'var(--jt-color-text-secondary)',
+                                border: isBusiness ? '1px solid #bfdbfe' : '1px solid var(--jt-color-border)'
+                              }}>
+                                {isBusiness ? '지출증빙' : '소득공제'}
+                              </span>
+                            );
+                          })()}
                           <span>{order.cash_receipt_phone.includes('-') ? order.cash_receipt_phone : formatPhoneNumber(order.cash_receipt_phone)}</span>
                           {order.cash_receipt_issued && (
                             <span style={{ display: 'inline-flex', alignItems: 'center', gap: '2px', backgroundColor: '#10b981', color: '#ffffff', fontSize: '11px', fontWeight: 'bold', padding: '1px 6px', borderRadius: '4px' }}>
