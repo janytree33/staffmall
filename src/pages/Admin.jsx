@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import * as XLSX from 'xlsx';
 import { supabase } from '../supabaseClient';
 import AdminPanel from '../components/AdminPanel';
 import { sendEmailReceipt } from '../utils/notificationService';
@@ -148,88 +149,75 @@ export default function Admin() {
       return;
     }
 
-    let csvContent = headers.join(",") + "\n";
+    // 엑셀 시트에 들어갈 2차원 배열 (첫 줄은 헤더)
+    const rows = [headers];
 
     targetOrders.forEach(order => {
-      // order_deliveries가 있으면 배송지별로 행을 생성 (신규 방식)
+      // order_deliveries가 있으면 배송지별로 1줄씩(합배송) 행을 생성 (신규 방식)
       const deliveries = order.order_deliveries && order.order_deliveries.length > 0
         ? [...order.order_deliveries].sort((a, b) => a.seq_no - b.seq_no)
         : null;
 
       if (deliveries) {
-        // 📦 신규 방식: 배송지 1개당 assigned_items 기준으로 행 생성
-        deliveries.forEach((d, dIdx) => {
-          // 이 배송지에 배정된 상품 목록
+        // 📦 신규 방식: 배송지 1곳당 무조건 1줄(합배송) 생성
+        // 가족/지인/본인 구분 및 단가는 수령인에게 노출되지 않도록 제외하고 "상품명 수량개, 상품명 수량개" 형태로 합침
+        deliveries.forEach((d) => {
           const items = d.assigned_items && d.assigned_items.length > 0
             ? d.assigned_items
-            : order.order_items || []; // 배분 정보 없으면 전체 상품으로 fallback
+            : order.order_items || [];
 
-          items.forEach(item => {
-            const row = Array(40).fill("");
-            row[1] = order.id;
-            row[2] = order.status;
-            row[5] = 3000; // 배송지당 택배비 3,000원
-            row[18] = item.quantity || 1;
-            row[19] = "제니트리 발송품";
-            row[20] = `${item.product_name} (${item.target_type || item.target_type || ''})`;
-            row[21] = item.price || 0;
-            row[26] = d.recipient_name || "";
-            row[27] = d.phone || "";
-            row[29] = d.zipcode || "";
-            row[30] = d.address || "";
-            row[31] = d.address_detail || "";
-            row[32] = d.memo || "";
-            row[38] = new Date(order.created_at).toLocaleDateString();
+          const combinedProductNames = items
+            .map(item => `${item.product_name} ${item.quantity || 1}개`)
+            .join(', ');
 
-            const escapedRow = row.map(cell => {
-              let str = String(cell !== undefined && cell !== null ? cell : '');
-              if (str.includes(',') || str.includes('"') || str.includes('\n')) {
-                str = '"' + str.replace(/"/g, '""') + '"';
-              }
-              return str;
-            });
-            csvContent += escapedRow.join(",") + "\n";
-          });
+          const row = Array(40).fill("");
+          row[1] = order.id;
+          row[2] = order.status;
+          row[18] = 1; // 합배송 1박스 기준
+          row[19] = "제니트리 발송품";
+          row[20] = combinedProductNames; // 예: "앰플런스 앰플 5개, 앰플런스 앰플 1개"
+          row[21] = ""; // 수령인에게 단가 비공개
+          row[26] = d.recipient_name || "";
+          row[27] = d.phone || "";
+          row[29] = d.zipcode || "";
+          row[30] = d.address || "";
+          row[31] = d.address_detail || "";
+          row[32] = d.memo || "";
+          row[38] = new Date(order.created_at).toLocaleDateString();
+
+          rows.push(row);
         });
       } else {
-        // 🔄 구 방식 호환: 단일 배송지
+        // 🔄 구 방식 호환: 단일 배송지도 1줄(합배송)로 통합 생성
         if (order.order_items && order.order_items.length > 0) {
-          order.order_items.forEach(item => {
-            const row = Array(40).fill("");
-            row[1] = order.id;
-            row[2] = order.status;
-            row[18] = item.quantity || 1;
-            row[19] = "제니트리 발송품";
-            row[20] = `${item.product_name} (${item.target_type})`;
-            row[21] = item.price || 0;
-            row[26] = order.delivery_name || order.members?.name || "";
-            row[27] = order.delivery_phone || "";
-            row[30] = order.delivery_address || "";
-            row[31] = order.delivery_address_detail || "";
-            row[32] = order.delivery_memo || "";
-            row[38] = new Date(order.created_at).toLocaleDateString();
+          const combinedProductNames = order.order_items
+            .map(item => `${item.product_name} ${item.quantity || 1}개`)
+            .join(', ');
 
-            const escapedRow = row.map(cell => {
-              let str = String(cell !== undefined && cell !== null ? cell : '');
-              if (str.includes(',') || str.includes('"') || str.includes('\n')) {
-                str = '"' + str.replace(/"/g, '""') + '"';
-              }
-              return str;
-            });
-            csvContent += escapedRow.join(",") + "\n";
-          });
+          const row = Array(40).fill("");
+          row[1] = order.id;
+          row[2] = order.status;
+          row[18] = 1; // 합배송 1박스 기준
+          row[19] = "제니트리 발송품";
+          row[20] = combinedProductNames;
+          row[21] = ""; // 수령인에게 단가 비공개
+          row[26] = order.delivery_name || order.members?.name || "";
+          row[27] = order.delivery_phone || "";
+          row[30] = order.delivery_address || "";
+          row[31] = order.delivery_address_detail || "";
+          row[32] = order.delivery_memo || "";
+          row[38] = new Date(order.created_at).toLocaleDateString();
+
+          rows.push(row);
         }
       }
     });
 
-    const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.setAttribute("href", url);
-    link.setAttribute("download", `택배배송_목록_${selectedMonth}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    // 엑셀 워크시트 및 워크북 생성 후 .xlsx 파일로 다운로드
+    const worksheet = XLSX.utils.aoa_to_sheet(rows);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "택배발송목록");
+    XLSX.writeFile(workbook, `택배배송_목록_${selectedMonth}.xlsx`);
   };
 
   if (!user) return null; // 권한 확인 전 빈 화면
@@ -286,7 +274,7 @@ export default function Admin() {
                 style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.4rem 0.8rem', fontSize: '0.85rem' }}
               >
                 <span className="material-symbols-rounded" style={{ fontSize: '18px' }}>download</span>
-                택배발송 CSV 다운로드
+                택배발송 엑셀 다운로드
               </button>
               <span style={{ fontSize: '0.9rem', fontWeight: 'bold', color: 'var(--jt-color-text-secondary)', marginLeft: '1rem' }}>조회 월 선택:</span>
               <input 
