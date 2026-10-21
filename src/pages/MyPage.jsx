@@ -69,9 +69,10 @@ export default function MyPage() {
             delivery_address,
             delivery_address_detail,
             delivery_memo,
+            tracking_number,
             cash_receipt_phone,
             order_items ( product_name, target_type, quantity, price ),
-            order_deliveries ( id, seq_no, recipient_name, phone, zipcode, address, address_detail, memo, assigned_items )
+            order_deliveries ( id, seq_no, recipient_name, phone, zipcode, address, address_detail, memo, tracking_number, assigned_items )
           `)
           .eq('member_id', userId)
           .order('created_at', { ascending: false });
@@ -366,14 +367,39 @@ export default function MyPage() {
                         ? [...order.order_deliveries].sort((a, b) => a.seq_no - b.seq_no)
                         : null;
 
+                      // 동일 품목 수량 합산 헬퍼
+                      const mergeAssignedItems = (items) => {
+                        if (!items || items.length === 0) return '';
+                        const map = new Map();
+                        items.forEach(ai => {
+                          const name = (ai.product_name || '').trim();
+                          if (!name) return;
+                          map.set(name, (map.get(name) || 0) + (Number(ai.quantity) || 1));
+                        });
+                        return Array.from(map.entries()).map(([name, qty]) => `${name} ${qty}개`).join(', ');
+                      };
+
                       if (deliveries) {
                         return (
                           <div style={{ marginTop: 'var(--jt-space-2)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                             {deliveries.map((d, i) => (
                               <div key={i} style={{ fontSize: '12px', color: 'var(--jt-color-text-secondary)', borderLeft: '2px solid var(--jt-color-primary)', paddingLeft: '8px' }}>
-                                {/* 배송지 헤더: 번호 + 수정 버튼 */}
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2px' }}>
-                                  <span style={{ fontWeight: 'bold', color: 'var(--jt-color-primary)' }}>배송지 {d.seq_no}</span>
+                                {/* 배송지 헤더: 번호 + 운송장번호 + 수정 버튼 */}
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2px', flexWrap: 'wrap', gap: '4px' }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                                    <span style={{ fontWeight: 'bold', color: 'var(--jt-color-primary)' }}>배송지 {d.seq_no}</span>
+                                    {d.tracking_number && (
+                                      <a
+                                        href={`https://trace.cjlogistics.com/next/tracking.html?wblNo=${d.tracking_number.replace(/[^0-9]/g, '')}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', fontSize: '11px', fontWeight: 'bold', color: 'var(--jt-color-accent, #305CDE)', backgroundColor: 'var(--jt-neutral-0)', border: '1px solid var(--jt-color-border)', borderRadius: '4px', padding: '1px 6px', textDecoration: 'none' }}
+                                      >
+                                        <span className="material-symbols-rounded" style={{ fontSize: '13px' }}>local_shipping</span>
+                                        CJ대한통운 {d.tracking_number} (배송조회 ↗)
+                                      </a>
+                                    )}
+                                  </div>
                                   {/* 입금대기 상태일 때만 수정 버튼 표시 */}
                                   {order.status === '입금대기' && (
                                     <button
@@ -388,10 +414,10 @@ export default function MyPage() {
                                 <div><span style={{ fontWeight: 'bold' }}>수령인:</span> {d.recipient_name} ({formatPhoneNumber(d.phone)})</div>
                                 <div><span style={{ fontWeight: 'bold' }}>주소:</span> {d.address} {d.address_detail}</div>
                                 {d.memo && <div><span style={{ fontWeight: 'bold' }}>요청사항:</span> {d.memo}</div>}
-                                {/* 이 배송지로 가는 상품 목록 */}
+                                {/* 이 배송지로 가는 상품 목록 (동일 품목 합산 표시) */}
                                 {d.assigned_items && d.assigned_items.length > 0 && (
                                   <div style={{ marginTop: '2px', color: 'var(--jt-color-text-tertiary)' }}>
-                                    → {d.assigned_items.map(ai => `${ai.product_name} ${ai.quantity}개`).join(', ')}
+                                    → {mergeAssignedItems(d.assigned_items)}
                                   </div>
                                 )}
                               </div>
@@ -402,6 +428,19 @@ export default function MyPage() {
                         // 기존 단일 배송지 방식 (이전 주문 호환)
                         return (
                           <div style={{ marginTop: 'var(--jt-space-2)', fontSize: '12px', color: 'var(--jt-color-text-secondary)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                            {order.tracking_number && (
+                              <div>
+                                <a
+                                  href={`https://trace.cjlogistics.com/next/tracking.html?wblNo=${order.tracking_number.replace(/[^0-9]/g, '')}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', fontSize: '11px', fontWeight: 'bold', color: 'var(--jt-color-accent, #305CDE)', textDecoration: 'underline' }}
+                                >
+                                  <span className="material-symbols-rounded" style={{ fontSize: '13px' }}>local_shipping</span>
+                                  CJ대한통운 {order.tracking_number} (배송조회 ↗)
+                                </a>
+                              </div>
+                            )}
                             <div><span style={{ fontWeight: 'bold' }}>수령인:</span> {order.delivery_name} ({formatPhoneNumber(order.delivery_phone)})</div>
                             <div><span style={{ fontWeight: 'bold' }}>배송지:</span> {order.delivery_address} {order.delivery_address_detail}</div>
                             {order.delivery_memo && <div><span style={{ fontWeight: 'bold' }}>요청사항:</span> {order.delivery_memo}</div>}

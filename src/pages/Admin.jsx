@@ -1,9 +1,24 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import * as XLSX from 'xlsx';
 import { supabase } from '../supabaseClient';
 import AdminPanel from '../components/AdminPanel';
 import { sendEmailReceipt } from '../utils/notificationService';
+
+// 동일 품목(product_name)일 경우 수량을 합산하여 "상품명 총수량개" 텍스트로 반환하는 헬퍼 함수
+function formatMergedItemsText(items) {
+  if (!items || items.length === 0) return '';
+  const mergedMap = new Map();
+  items.forEach(item => {
+    const name = (item.product_name || '').trim();
+    if (!name) return;
+    const qty = Number(item.quantity) || 1;
+    mergedMap.set(name, (mergedMap.get(name) || 0) + qty);
+  });
+  return Array.from(mergedMap.entries())
+    .map(([name, totalQty]) => `${name} ${totalQty}개`)
+    .join(', ');
+}
 
 export default function Admin() {
   const navigate = useNavigate();
@@ -22,6 +37,11 @@ export default function Admin() {
   
   // 선택된 주문 관리 상태
   const [selectedOrders, setSelectedOrders] = useState([]);
+
+  // 운송장 엑셀 업로드 상태 및 모달
+  const fileInputRef = useRef(null);
+  const [isUploadingTracking, setIsUploadingTracking] = useState(false);
+  const [uploadResultModal, setUploadResultModal] = useState(null);
 
   async function checkUserAndFetchData() {
     const sessionUser = JSON.parse(localStorage.getItem('custom_user') || 'null');
@@ -72,10 +92,11 @@ export default function Admin() {
           delivery_address,
           delivery_address_detail,
           delivery_memo,
+          tracking_number,
           cash_receipt_phone,
           members ( name, phone_last_4_hashed ),
           order_items ( product_name, target_type, quantity, price ),
-          order_deliveries ( seq_no, recipient_name, phone, zipcode, address, address_detail, memo, assigned_items )
+          order_deliveries ( id, seq_no, recipient_name, phone, zipcode, address, address_detail, memo, tracking_number, assigned_items )
         `)
         .gte('created_at', startRange)
         .lt('created_at', endRange)
@@ -159,23 +180,20 @@ export default function Admin() {
         : null;
 
       if (deliveries) {
-        // 📦 신규 방식: 배송지 1곳당 무조건 1줄(합배송) 생성
-        // 가족/지인/본인 구분 및 단가는 수령인에게 노출되지 않도록 제외하고 "상품명 수량개, 상품명 수량개" 형태로 합침
+        // 📦 신규 방식: 배송지 1곳당 무조건 1줄(합배송) 생성 + 동일 품목은 수량 합산
         deliveries.forEach((d) => {
           const items = d.assigned_items && d.assigned_items.length > 0
             ? d.assigned_items
             : order.order_items || [];
 
-          const combinedProductNames = items
-            .map(item => `${item.product_name} ${item.quantity || 1}개`)
-            .join(', ');
+          const combinedProductNames = formatMergedItemsText(items);
 
           const row = Array(40).fill("");
           row[1] = order.id;
           row[2] = order.status;
           row[18] = 1; // 합배송 1박스 기준
           row[19] = "제니트리 발송품";
-          row[20] = combinedProductNames; // 예: "앰플런스 앰플 5개, 앰플런스 앰플 1개"
+          row[20] = combinedProductNames; // 예: "앰플런스 앰플 6개"
           row[21] = ""; // 수령인에게 단가 비공개
           row[26] = d.recipient_name || "";
           row[27] = d.phone || "";
@@ -188,11 +206,9 @@ export default function Admin() {
           rows.push(row);
         });
       } else {
-        // 🔄 구 방식 호환: 단일 배송지도 1줄(합배송)로 통합 생성
+        // 🔄 구 방식 호환: 단일 배송지도 1줄(합배송) + 동일 품목 수량 합산으로 통합 생성
         if (order.order_items && order.order_items.length > 0) {
-          const combinedProductNames = order.order_items
-            .map(item => `${item.product_name} ${item.quantity || 1}개`)
-            .join(', ');
+          const combinedProductNames = formatMergedItemsText(order.order_items);
 
           const row = Array(40).fill("");
           row[1] = order.id;
@@ -218,6 +234,179 @@ export default function Admin() {
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "택배발송목록");
     XLSX.writeFile(workbook, `택배배송_목록_${selectedMonth}.xlsx`);
+  };
+
+  // 전화번호 숫자 비교 헬퍼 (엑셀에서 앞자리 0이 잘린 경우까지 호환)
+  const isPhoneMatch = (phoneA, phoneB) => {
+    const digitsA = String(phoneA || '').replace(/[^0-9]/g, '');
+    const digitsB = String(phoneB || '').replace(/[^0-9]/g, '');
+    if (!digitsA || !digitsB) return false;
+    if (digitsA === digitsB) return true;
+    if (digitsA.length >= 8 && digitsB.length >= 8) {
+      return digitsA.slice(-8) === digitsB.slice(-8);
+    }
+    return false;
+  };
+
+  // CJ대한통운 접수 엑셀/CSV 업로드 → 운송장번호 자동 매칭 및 주문상태 '배송/수령 완료' 자동 전환
+  const handleTrackingExcelUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    // 같은 파일을 다시 올릴 수 있도록 input 초기화
+    e.target.value = '';
+
+    setIsUploadingTracking(true);
+    try {
+      const arrayBuffer = await file.arrayBuffer();
+      const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+      const firstSheetName = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[firstSheetName];
+      const rawRows = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' });
+
+      // 1. 헤더 행 찾기 ('운송장번호' 또는 '송장번호'가 포함된 행)
+      let headerRowIndex = -1;
+      let trackingCol = -1;
+      let nameCol = -1;
+      let phoneCol = -1;
+      let zipCol = -1;
+
+      for (let i = 0; i < Math.min(rawRows.length, 15); i++) {
+        const row = rawRows[i].map(cell => String(cell || '').replace(/\s+/g, ''));
+        const tIdx = row.findIndex(h => h.includes('운송장번호') || h.includes('송장번호'));
+        if (tIdx !== -1) {
+          headerRowIndex = i;
+          trackingCol = tIdx;
+          nameCol = row.findIndex(h => h === '받는분' || h === '받는분성명' || h === '수령자명' || h === '수령인' || h === '수취인' || h === '수취인명');
+          phoneCol = row.findIndex(h => h.includes('받는분전화') || h.includes('수령자전화') || h.includes('받는분연락처') || h === '전화번호' || h === '연락처');
+          zipCol = row.findIndex(h => h.includes('우편번호'));
+          break;
+        }
+      }
+
+      if (headerRowIndex === -1 || trackingCol === -1 || nameCol === -1) {
+        setUploadResultModal({
+          success: false,
+          message: "엑셀 파일에서 '운송장번호' 또는 '받는분' 컬럼을 찾을 수 없습니다. 택배 사이트에서 다운로드한 파일이 맞는지 확인해주세요.",
+          matchedList: [],
+          unmatchedList: []
+        });
+        return;
+      }
+
+      // 2. 현재 조회된 택배배송 주문(취소 제외)에서 배송지 후보 목록 구성
+      const activeDeliveryOrders = adminOrders.filter(
+        o => o.delivery_type === '택배배송' && o.status !== '주문취소'
+      );
+
+      const usedDeliveryIds = new Set();
+      const matchedOrderIds = new Set();
+      const matchedList = [];
+      const unmatchedList = [];
+
+      // 3. 데이터 행 순회하며 매칭
+      const dataRows = rawRows.slice(headerRowIndex + 1);
+      for (const row of dataRows) {
+        const trackingNo = String(row[trackingCol] || '').trim();
+        const recipientName = String(row[nameCol] || '').trim();
+        const recipientPhone = phoneCol !== -1 ? String(row[phoneCol] || '').trim() : '';
+        const recipientZip = zipCol !== -1 ? String(row[zipCol] || '').trim() : '';
+
+        // 빈 행 또는 운송장/수령인이 없는 행 건너뛰기
+        if (!trackingNo || !recipientName) continue;
+
+        let matchedTarget = null;
+
+        // 후보 탐색 (이름 + 전화번호 일치)
+        const candidates = [];
+        for (const order of activeDeliveryOrders) {
+          if (order.order_deliveries && order.order_deliveries.length > 0) {
+            for (const d of order.order_deliveries) {
+              if (usedDeliveryIds.has(`deliv_${d.id}`)) continue;
+              const nameMatches = (d.recipient_name || '').trim() === recipientName;
+              const phoneMatches = !recipientPhone || isPhoneMatch(d.phone, recipientPhone);
+              if (nameMatches && phoneMatches) {
+                candidates.push({ type: 'delivery', order, delivery: d });
+              }
+            }
+          } else {
+            if (usedDeliveryIds.has(`order_${order.id}`)) continue;
+            const nameMatches = (order.delivery_name || '').trim() === recipientName;
+            const phoneMatches = !recipientPhone || isPhoneMatch(order.delivery_phone, recipientPhone);
+            if (nameMatches && phoneMatches) {
+              candidates.push({ type: 'legacy_order', order });
+            }
+          }
+        }
+
+        if (candidates.length === 1) {
+          matchedTarget = candidates[0];
+        } else if (candidates.length > 1) {
+          // 동일 수령인이 여러 건일 경우 우편번호 일치 건 우선, 아직 운송장이 없는 건 우선
+          matchedTarget =
+            candidates.find(c => c.type === 'delivery' && String(c.delivery.zipcode || '').trim() === recipientZip && !c.delivery.tracking_number) ||
+            candidates.find(c => c.type === 'delivery' && String(c.delivery.zipcode || '').trim() === recipientZip) ||
+            candidates.find(c => c.type === 'delivery' && !c.delivery.tracking_number) ||
+            candidates[0];
+        }
+
+        if (matchedTarget) {
+          if (matchedTarget.type === 'delivery') {
+            const { error } = await supabase
+              .from('order_deliveries')
+              .update({ tracking_number: trackingNo })
+              .eq('id', matchedTarget.delivery.id);
+            if (error) throw error;
+            usedDeliveryIds.add(`deliv_${matchedTarget.delivery.id}`);
+          } else {
+            const { error } = await supabase
+              .from('orders')
+              .update({ tracking_number: trackingNo })
+              .eq('id', matchedTarget.order.id);
+            if (error) throw error;
+            usedDeliveryIds.add(`order_${matchedTarget.order.id}`);
+          }
+
+          matchedOrderIds.add(matchedTarget.order.id);
+          matchedList.push({
+            recipientName,
+            recipientPhone,
+            trackingNo,
+            ordererName: matchedTarget.order.members?.name || ''
+          });
+        } else {
+          unmatchedList.push({ recipientName, recipientPhone, trackingNo });
+        }
+      }
+
+      // 4. 매칭된 주문들의 상태를 자동으로 '배송/수령 완료'로 업데이트
+      for (const orderId of matchedOrderIds) {
+        await supabase
+          .from('orders')
+          .update({ status: '배송/수령 완료' })
+          .eq('id', orderId);
+      }
+
+      await fetchAdminOrders();
+
+      setUploadResultModal({
+        success: true,
+        message: matchedList.length > 0
+          ? `총 ${matchedList.length}건의 배송지에 운송장번호가 등록되었으며, 해당 주문 상태가 '배송/수령 완료'로 자동 변경되었습니다.`
+          : `일치하는 주문을 찾지 못했습니다. 현재 선택된 조회 월(${selectedMonth})의 주문인지 확인해주세요.`,
+        matchedList,
+        unmatchedList
+      });
+    } catch (err) {
+      console.error('운송장 엑셀 업로드 오류:', err);
+      setUploadResultModal({
+        success: false,
+        message: '운송장번호 저장 중 오류가 발생했습니다. DB 마이그레이션(011_add_tracking_number.sql)이 실행되었는지 확인해주세요.',
+        matchedList: [],
+        unmatchedList: []
+      });
+    } finally {
+      setIsUploadingTracking(false);
+    }
   };
 
   if (!user) return null; // 권한 확인 전 빈 화면
@@ -267,7 +456,7 @@ export default function Admin() {
               주문 현황 및 취소 관리
             </h3>
             
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
               <button 
                 onClick={downloadDeliveryCSV}
                 className="premium-btn outline"
@@ -276,7 +465,26 @@ export default function Admin() {
                 <span className="material-symbols-rounded" style={{ fontSize: '18px' }}>download</span>
                 택배발송 엑셀 다운로드
               </button>
-              <span style={{ fontSize: '0.9rem', fontWeight: 'bold', color: 'var(--jt-color-text-secondary)', marginLeft: '1rem' }}>조회 월 선택:</span>
+
+              {/* CJ대한통운 접수 엑셀 업로드 숨김 input + 버튼 */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".xlsx,.xls,.csv"
+                onChange={handleTrackingExcelUpload}
+                style={{ display: 'none' }}
+              />
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isUploadingTracking}
+                className="premium-btn"
+                style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.4rem 0.8rem', fontSize: '0.85rem', backgroundColor: 'var(--jt-color-primary)', color: '#fff', border: 'none' }}
+              >
+                <span className="material-symbols-rounded" style={{ fontSize: '18px' }}>upload_file</span>
+                {isUploadingTracking ? '운송장 매칭 중...' : '운송장 엑셀 업로드'}
+              </button>
+
+              <span style={{ fontSize: '0.9rem', fontWeight: 'bold', color: 'var(--jt-color-text-secondary)', marginLeft: '0.5rem' }}>조회 월 선택:</span>
               <input 
                 type="month" 
                 value={selectedMonth}
@@ -341,18 +549,30 @@ export default function Admin() {
                             : null;
 
                           if (deliveries) {
-                            // 신규: 다중 배송지 표시
+                            // 신규: 다중 배송지 표시 (동일 품목 수량 합산 + 운송장번호 표시)
                             return (
                               <div style={{ lineHeight: '1.5', display: 'flex', flexDirection: 'column', gap: '6px' }}>
                                 {deliveries.map((d, i) => (
                                   <div key={i} style={{ borderLeft: '2px solid var(--jt-color-primary)', paddingLeft: '6px' }}>
-                                    <div style={{ fontWeight: 'bold', fontSize: '0.78rem', color: 'var(--jt-color-primary)' }}>배송지 {d.seq_no}</div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                                      <span style={{ fontWeight: 'bold', fontSize: '0.78rem', color: 'var(--jt-color-primary)' }}>배송지 {d.seq_no}</span>
+                                      {d.tracking_number && (
+                                        <a
+                                          href={`https://trace.cjlogistics.com/next/tracking.html?wblNo=${d.tracking_number.replace(/[^0-9]/g, '')}`}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          style={{ fontSize: '0.75rem', fontWeight: 'bold', color: 'var(--jt-color-accent, #305CDE)', backgroundColor: 'var(--jt-neutral-0)', border: '1px solid var(--jt-color-border)', borderRadius: '4px', padding: '1px 6px', textDecoration: 'none' }}
+                                        >
+                                          CJ대한통운 {d.tracking_number} ↗
+                                        </a>
+                                      )}
+                                    </div>
                                     <div><strong>수령인:</strong> {d.recipient_name} / {d.phone}</div>
                                     <div><strong>주소:</strong> ({d.zipcode}) {d.address} {d.address_detail}</div>
                                     {d.memo && <div><strong>메모:</strong> {d.memo}</div>}
                                     {d.assigned_items && d.assigned_items.length > 0 && (
                                       <div style={{ color: 'var(--jt-color-text-tertiary)', fontSize: '0.78rem' }}>
-                                        → {d.assigned_items.map(ai => `${ai.product_name} ${ai.quantity}개`).join(', ')}
+                                        → {formatMergedItemsText(d.assigned_items)}
                                       </div>
                                     )}
                                   </div>
@@ -363,6 +583,18 @@ export default function Admin() {
                             // 구 방식 호환: 단일 배송지
                             return (
                               <div style={{ lineHeight: '1.4' }}>
+                                {order.tracking_number && (
+                                  <div style={{ marginBottom: '2px' }}>
+                                    <a
+                                      href={`https://trace.cjlogistics.com/next/tracking.html?wblNo=${order.tracking_number.replace(/[^0-9]/g, '')}`}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      style={{ fontSize: '0.75rem', fontWeight: 'bold', color: 'var(--jt-color-accent, #305CDE)', textDecoration: 'underline' }}
+                                    >
+                                      CJ대한통운 {order.tracking_number} ↗
+                                    </a>
+                                  </div>
+                                )}
                                 <div><strong>수령인:</strong> {order.delivery_name}</div>
                                 <div><strong>연락처:</strong> {order.delivery_phone}</div>
                                 <div><strong>주소:</strong> {order.delivery_address} {order.delivery_address_detail}</div>
@@ -457,6 +689,67 @@ export default function Admin() {
       <div style={{ marginBottom: '3rem', animation: 'fadeIn 0.3s ease-out' }}>
         <AdminPanel members={members} products={products} />
       </div>
+
+      {/* 📦 운송장 엑셀 업로드 결과 모달 */}
+      {uploadResultModal && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, width: '100%', height: '100%',
+          backgroundColor: 'var(--jt-dim-50)', backdropFilter: 'blur(4px)',
+          display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 9999
+        }}>
+          <div className="card animate-fade-in" style={{
+            width: '90%', maxWidth: '480px', backgroundColor: 'var(--jt-neutral-0)',
+            padding: 'var(--jt-space-7)', borderRadius: 'var(--jt-r-xl)',
+            boxShadow: 'var(--jt-shadow-2xl)', maxHeight: '85vh', overflowY: 'auto'
+          }}>
+            <div style={{ textAlign: 'center', marginBottom: '1rem' }}>
+              <span className="material-symbols-rounded" style={{ fontSize: '2.5rem', color: uploadResultModal.success ? 'var(--jt-color-primary)' : '#ef4444' }}>
+                {uploadResultModal.success ? 'local_shipping' : 'error'}
+              </span>
+              <h3 style={{ fontSize: '1.15rem', fontWeight: '800', color: 'var(--jt-color-text)', margin: '0.4rem 0' }}>
+                운송장 엑셀 업로드 결과
+              </h3>
+              <p style={{ fontSize: '0.9rem', color: 'var(--jt-color-text-secondary)', lineHeight: '1.5', margin: 0 }}>
+                {uploadResultModal.message}
+              </p>
+            </div>
+
+            {uploadResultModal.matchedList.length > 0 && (
+              <div style={{ backgroundColor: 'var(--jt-neutral-50)', padding: '0.75rem', borderRadius: 'var(--jt-r-md)', border: '1px solid var(--jt-color-border)', marginBottom: '1rem', fontSize: '0.85rem' }}>
+                <div style={{ fontWeight: 'bold', color: 'var(--jt-color-primary)', marginBottom: '0.4rem' }}>
+                  매칭 완료 내역 ({uploadResultModal.matchedList.length}건)
+                </div>
+                {uploadResultModal.matchedList.map((m, idx) => (
+                  <div key={idx} style={{ padding: '0.25rem 0', borderBottom: idx < uploadResultModal.matchedList.length - 1 ? '1px dashed var(--jt-color-border)' : 'none' }}>
+                    <strong>{m.recipientName}</strong> ({m.recipientPhone}) → <span style={{ color: 'var(--jt-color-primary)', fontWeight: 'bold' }}>{m.trackingNo}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {uploadResultModal.unmatchedList.length > 0 && (
+              <div style={{ backgroundColor: '#fef2f2', padding: '0.75rem', borderRadius: 'var(--jt-r-md)', border: '1px solid #fecaca', marginBottom: '1rem', fontSize: '0.82rem', color: '#991b1b' }}>
+                <div style={{ fontWeight: 'bold', marginBottom: '0.4rem' }}>
+                  매칭되지 않은 행 ({uploadResultModal.unmatchedList.length}건)
+                </div>
+                {uploadResultModal.unmatchedList.map((u, idx) => (
+                  <div key={idx} style={{ padding: '0.15rem 0' }}>
+                    {u.recipientName} ({u.recipientPhone}) - {u.trackingNo}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <button
+              onClick={() => setUploadResultModal(null)}
+              className="premium-btn"
+              style={{ width: '100%', padding: '0.7rem', backgroundColor: 'var(--jt-color-primary)', color: '#fff', border: 'none', borderRadius: 'var(--jt-r-md)', fontWeight: 'bold', cursor: 'pointer' }}
+            >
+              확인
+            </button>
+          </div>
+        </div>
+      )}
 
     </div>
   );
