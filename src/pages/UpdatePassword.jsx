@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '../supabaseClient';
+import { changePassword } from '../lib/auth';
 
 export default function UpdatePassword() {
   const [password, setPassword] = useState('');
@@ -41,8 +41,8 @@ export default function UpdatePassword() {
       return;
     }
 
-    if (password.length < 4) {
-      setErrorMsg('비밀번호는 최소 4자 이상이어야 합니다.');
+    if (password.length < 6) {
+      setErrorMsg('비밀번호는 최소 6자 이상이어야 합니다.');
       return;
     }
 
@@ -53,14 +53,7 @@ export default function UpdatePassword() {
         navigate('/login');
         return;
       }
-      const user = JSON.parse(storedUser);
-
-      const { error } = await supabase
-        .from('members')
-        .update({ phone_last_4_hashed: password })
-        .eq('id', user.id);
-
-      if (error) throw error;
+      await changePassword(password); // Supabase 정식 계정 비밀번호 변경
 
       setSuccessMsg('비밀번호가 성공적으로 변경되었습니다!');
       // 2초 후 마이페이지로 이동

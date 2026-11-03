@@ -6,7 +6,6 @@ export default function AdminPanel({ members, products }) {
   // 멤버 추가 폼 상태
   const [newMemberName, setNewMemberName] = useState('');
   const [newMemberEmail, setNewMemberEmail] = useState('');
-  const [newMemberPin, setNewMemberPin] = useState('');
   const [isAddingMember, setIsAddingMember] = useState(false);
 
   // 상품 추가 폼 상태
@@ -77,8 +76,8 @@ export default function AdminPanel({ members, products }) {
 
   // ===== [멤버 관리 로직] =====
   const handleAddMember = async () => {
-    if (!newMemberName.trim() || !newMemberEmail.trim() || !newMemberPin.trim()) {
-      alert("직원 이름, 이메일, 초기 비밀번호를 정확히 입력해주세요.");
+    if (!newMemberName.trim() || !newMemberEmail.trim()) {
+      alert("직원 이름과 이메일을 정확히 입력해주세요.");
       return;
     }
 
@@ -87,8 +86,7 @@ export default function AdminPanel({ members, products }) {
       .from('members')
       .insert([{ 
         name: newMemberName.trim(), 
-        email: newMemberEmail.trim(),
-        phone_last_4_hashed: newMemberPin 
+        email: newMemberEmail.trim().toLowerCase()
       }])
       .select();
 
@@ -96,7 +94,7 @@ export default function AdminPanel({ members, products }) {
       console.error("멤버 추가 에러:", error);
       alert("멤버 추가에 실패했습니다. (동일한 이메일이 이미 존재할 수 있습니다.)");
     } else if (data && data.length > 0) {
-      alert("멤버가 성공적으로 추가되었습니다.");
+      alert("멤버가 추가되었습니다. Supabase > Authentication > Users 에서 같은 이메일로 계정을 만들어 주면, 그 직원이 처음 로그인할 때 자동으로 연결돼요.");
       window.location.reload();
     }
     setIsAddingMember(false);
@@ -281,13 +279,6 @@ export default function AdminPanel({ members, products }) {
               onChange={e => setNewMemberEmail(e.target.value)}
               style={{ flex: 2, minWidth: '150px' }}
             />
-            <input 
-              type="text" 
-              placeholder="초기 비번" 
-              value={newMemberPin} 
-              onChange={e => setNewMemberPin(e.target.value)}
-              style={{ width: '100px', flex: 'none' }}
-            />
             <button className="btn-add" onClick={handleAddMember} disabled={isAddingMember}>
               {isAddingMember ? '추가중' : <><span className="material-symbols-rounded" style={{ fontSize: '18px', marginRight: '4px', verticalAlign: 'text-bottom' }}>person_add</span> 추가</>}
             </button>
@@ -298,7 +289,7 @@ export default function AdminPanel({ members, products }) {
               <div key={m.id} className="list-item">
                 <div className="item-info">
                   <span className="item-name">{m.name}</span>
-                  <span className="item-sub">이메일: {m.email || '미등록'} | 비밀번호: {m.phone_last_4_hashed}</span>
+                  <span className="item-sub">이메일: {m.email || '미등록'} | {m.user_id ? '로그인 계정 연결됨' : '계정 연결 전'}</span>
                 </div>
                 <button className="btn-icon btn-delete" onClick={() => handleDeleteMember(m.id)}>
                   ✕

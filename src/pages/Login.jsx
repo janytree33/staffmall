@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '../supabaseClient';
+import { signIn } from '../lib/auth';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -49,16 +49,8 @@ export default function Login() {
     setLoading(true);
 
     try {
-      const { data, error } = await supabase
-        .from('members')
-        .select('*')
-        .eq('email', email)
-        .eq('phone_last_4_hashed', password)
-        .single();
-
-      if (error || !data) {
-        throw new Error('이메일 또는 비밀번호가 일치하지 않습니다.');
-      }
+      // Supabase 정식 로그인 (비밀번호는 Supabase 가 암호화 보관) — 직원 정보는 custom_user 로 저장됨
+      await signIn(email, password);
 
       // 이메일 저장 처리
       if (saveEmail) {
@@ -67,18 +59,11 @@ export default function Login() {
         localStorage.removeItem('saved_email');
       }
 
-      // 커스텀 로그인 성공: 로컬 스토리지에 유저 정보 저장
-      localStorage.setItem('custom_user', JSON.stringify({
-        id: data.id,
-        email: data.email,
-        name: data.name,
-      }));
-
       // 로그인 성공 시 메인 화면으로 이동
       navigate('/');
     } catch (err) {
       console.error(err);
-      setErrorMsg('이메일 또는 비밀번호가 일치하지 않습니다.');
+      setErrorMsg(err.message || '이메일 또는 비밀번호가 일치하지 않습니다.');
     } finally {
       setLoading(false);
     }

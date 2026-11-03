@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
+import { signOut } from '../lib/auth';
 import { sendTelegramCancelAlert, sendEmailReceipt } from '../utils/notificationService';
 
 export default function MyPage() {
@@ -90,9 +91,8 @@ export default function MyPage() {
     fetchUser();
   }, [navigate]);
 
-  const handleLogout = () => {
-    localStorage.removeItem('custom_user');
-    window.dispatchEvent(new Event('storage')); // Home.jsx 등에 로그아웃 이벤트 알림
+  const handleLogout = async () => {
+    await signOut(); // 정식 세션 + 화면용 기록 모두 지우고 다른 화면에 알림
     navigate('/');
   };
 
